@@ -9,6 +9,8 @@
 
 Unlike XGBoost and LightGBM, which rely exclusively on decision trees as base learners, SnapBoost stochastically selects from a heterogeneous pool of learners at each boosting iteration. This lets the model capture both local, axis-aligned structure (trees) and smooth, global patterns (RBF kernel ridge).
 
+This package is a Python/scikit-learn reimplementation inspired by [SnapBoost: A Heterogeneous Boosting Machine](https://arxiv.org/abs/2006.09745) (Parnell et al., NeurIPS 2020). See [REFERENCES.md](REFERENCES.md) for papers, related work, and citation details.
+
 ---
 
 ## Table of Contents
@@ -22,6 +24,7 @@ Unlike XGBoost and LightGBM, which rely exclusively on decision trees as base le
 - [Parameters](#parameters)
 - [Docker](#docker)
 - [Development](#development)
+- [References & Citation](#references--citation)
 - [License](#license)
 
 ---
@@ -218,6 +221,31 @@ pip install -e .
 ```
 
 Releases are published to PyPI via GitHub Actions when a GitHub release is created.
+
+---
+
+## References & Citation
+
+If you use this package or the HNBM framework in research, please cite the original SnapBoost paper:
+
+> Thomas Parnell, Andreea Anghel, Małgorzata Łazuka, Nikolas Ioannou, Sebastian Kurella, Peshal Agarwal, Nikolaos Papandreou, and Haralampos Pozidis. **SnapBoost: A Heterogeneous Boosting Machine.** *Advances in Neural Information Processing Systems*, 33, 2020.
+
+```bibtex
+@inproceedings{parnell2020snapboost,
+  title     = {{SnapBoost}: A Heterogeneous Boosting Machine},
+  author    = {Parnell, Thomas and Anghel, Andreea and {\L}azuka, Ma{\l}gorzata and Ioannou, Nikolas and Kurella, Sebastian and Agarwal, Peshal and Papandreou, Nikolaos and Pozidis, Haralampos},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {33},
+  pages     = {20872--20883},
+  year      = {2020},
+  eprint    = {2006.09745},
+  doi       = {10.48550/arXiv.2006.09745}
+}
+```
+
+**Links:** [arXiv:2006.09745](https://arxiv.org/abs/2006.09745) · [NeurIPS proceedings](https://proceedings.neurips.cc/paper/2020/hash/7fd3b80fb1884e2927df46a7139bb8bf-Abstract.html) · [IBM Research](https://research.ibm.com/publications/snapboost-a-heterogeneous-boosting-machine)
+
+For the full bibliography, related heterogeneous-boosting literature (KTBoost, DeepBoost, etc.), and notes on how this repo relates to the original IBM Snap ML implementation, see **[REFERENCES.md](REFERENCES.md)**. Additional BibTeX entries are in **[CITATION.bib](CITATION.bib)**.
 
 ---
 

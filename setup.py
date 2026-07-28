@@ -22,10 +22,10 @@ def _parse_requirements(file_path):
 setup(
     name="snapboost",
     version="0.1.3",
-    author="Samson Qian",
-    author_email="samsonqian@gmail.com",
+    author="Qian Capital",
+    author_email="samson.qian@qiancapital.com",
     packages=["snapboost"],
-    url="https://github.com/samsonq/snapboost",
+    url="https://github.com/qiancapital/snapboost",
     license="MIT",
     description="Heterogeneous Newton Boosting Machine",
     long_description=README,

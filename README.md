@@ -223,6 +223,4 @@ Releases are published to PyPI via GitHub Actions when a GitHub release is creat
 
 ## License
 
-MIT © [Samson Qian](https://github.com/qiancapital/snapboost) / Qian Capital
-
-See [LICENSE](LICENSE) for full text.
+MIT — See [LICENSE](LICENSE) for full text.

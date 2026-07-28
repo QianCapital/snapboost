@@ -1,37 +1,27 @@
-from setuptools import setup, find_packages
-import pip
-import logging
-import pkg_resources
-import pathlib
 from setuptools import setup
+import pathlib
 
-# The directory containing this file
 HERE = pathlib.Path(__file__).parent
-
-# The text of the README file
 README = (HERE / "README.md").read_text()
 
 
 def _parse_requirements(file_path):
-    pip_ver = pkg_resources.get_distribution('pip').version
-    pip_version = list(map(int, pip_ver.split('.')[:2]))
-    if pip_version >= [6, 0]:
-        raw = pip.req.parse_requirements(file_path,
-                                         session=pip.download.PipSession())
-    else:
-        raw = pip.req.parse_requirements(file_path)
-    return [str(i.req) for i in raw]
+    with open(file_path) as f:
+        lines = f.read().splitlines()
+    reqs = []
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("pip") or line.startswith("setuptools"):
+            continue
+        reqs.append(line)
+    return reqs
 
-
-try:
-    install_reqs = _parse_requirements("requirements.txt")
-except Exception as e:
-    logging.warning('Fail load requirements file, so using default ones.')
-    install_reqs = []
 
 setup(
     name="snapboost",
-    version="0.1.2",
+    version="0.1.3",
     author="Samson Qian",
     author_email="samsonqian@gmail.com",
     packages=["snapboost"],
@@ -40,7 +30,7 @@ setup(
     description="Heterogeneous Newton Boosting Machine",
     long_description=README,
     long_description_content_type="text/markdown",
-    install_requires=install_reqs,
+    install_requires=_parse_requirements("requirements.txt"),
     python_requires=">=3.6",
-    keywords="boosting gradient-boosting snapboost"
+    keywords="boosting gradient-boosting snapboost",
 )

@@ -21,7 +21,7 @@ def _parse_requirements(file_path):
 
 setup(
     name="snapboost",
-    version="0.1.5",
+    version="0.1.6",
     author="Qian Capital",
     author_email="samson.qian@qiancapital.com",
     packages=["snapboost"],

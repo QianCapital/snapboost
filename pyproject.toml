@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "snapboost"
-version = "0.1.5"
+version = "0.1.6"
 description = "SnapBoost heterogeneous Newton boosting with decision trees and RFF ridge regressors"
 readme = "README.md"
 license = {text = "MIT"}

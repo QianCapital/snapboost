@@ -1,7 +1,6 @@
 # SnapBoost
 
 [![PyPI version](https://img.shields.io/pypi/v/snapboost.svg)](https://pypi.org/project/snapboost/)
-[![Python versions](https://img.shields.io/pypi/pyversions/snapboost.svg)](https://pypi.org/project/snapboost/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![scikit-learn](https://img.shields.io/badge/scikit--learn-compatible-blue.svg)](https://scikit-learn.org/)
 
@@ -18,6 +17,7 @@ This package is a Python/scikit-learn reimplementation inspired by [SnapBoost: A
 - [Features](#features)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
+- [Examples & Results](#examples--results)
 - [API Reference](#api-reference)
   - [SnapBoostClassifier / SnapBoostRegressor](#snapboostclassifier--snapboostregressor)
   - [SnapBoost](#snapboost)
@@ -107,6 +107,61 @@ model.fit(X_train, y_train)
 print("R²:", model.score(X_test, y_test))
 model.evaluate(X_test, y_test)  # prints RMSE
 ```
+
+---
+
+## Examples & Results
+
+Interactive Jupyter notebooks in [`static/`](static/) walk through classification, regression, and hyperparameter exploration. Each notebook trains SnapBoost and compares it against **XGBoost** and **LightGBM** on the same splits.
+
+| Notebook | Dataset | SnapBoost | XGBoost | LightGBM |
+|----------|---------|-----------|---------|----------|
+| [Classification.ipynb](static/Classification.ipynb) | [Breast Cancer Wisconsin](https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_breast_cancer.html) | 97.2% accuracy | 95.8% | 96.5% |
+| [Regression.ipynb](static/Regression.ipynb) | [Diabetes](https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_diabetes.html) | R² 0.44, RMSE 55.7 | R² 0.38, RMSE 58.4 | R² 0.40, RMSE 57.7 |
+| [Parameter_Exploration.ipynb](static/Parameter_Exploration.ipynb) | Synthetic (piecewise + smooth) | R² 0.986, RMSE 0.170 | R² 0.986, RMSE 0.174 | R² 0.987, RMSE 0.167 |
+
+Run the notebooks locally:
+
+```bash
+pip install -r requirements.txt xgboost lightgbm
+jupyter notebook static/
+```
+
+### Classification
+
+On the Breast Cancer dataset (250 boosting rounds), SnapBoost achieves the highest test accuracy and fewest misclassifications among the three boosters:
+
+![Test accuracy and error count vs XGBoost and LightGBM](static/classification_comparison.png)
+
+Confusion matrix for SnapBoost on the held-out test set:
+
+![SnapBoost classification confusion matrix](static/classification_confusion_matrix.png)
+
+### Regression
+
+On the Diabetes dataset (100 boosting rounds), SnapBoost improves R² and RMSE over tree-only baselines:
+
+![R², RMSE, and MAE comparison on Diabetes dataset](static/regression_comparison.png)
+
+Predicted vs. actual disease progression on the test set:
+
+![Predicted vs actual scatter plot](static/regression_predicted_vs_actual.png)
+
+SnapBoost fitted curve along BMI (other features held at training medians):
+
+![BMI vs target with SnapBoost fit](static/regression_bmi_fit.png)
+
+Residual distribution:
+
+![Regression residual histogram](static/regression_residuals.png)
+
+### Parameter exploration
+
+On a synthetic dataset mixing piecewise-linear and sinusoidal structure, the notebook sweeps `p_tree`, tree depth ranges, and kernel ridge parameters. A mixed ensemble (`p_tree=0.8`) outperforms trees-only (`p_tree=1.0`, RMSE 0.174) and ridge-only (`p_tree=0.0`, RMSE 0.366):
+
+![Learned functions along one axis for different p_tree values](static/parameter_exploration_predictions.png)
+
+See [Parameter_Exploration.ipynb](static/Parameter_Exploration.ipynb) for the full sweeps and baseline comparison tables.
 
 ---
 
@@ -243,6 +298,7 @@ git clone https://github.com/qiancapital/snapboost.git
 cd snapboost
 pip install -r requirements.txt
 pip install -e .
+jupyter notebook static/   # optional: run example notebooks
 ```
 
 Releases are published to PyPI via GitHub Actions when a GitHub release is created.

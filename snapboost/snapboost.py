@@ -1,6 +1,6 @@
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.kernel_ridge import KernelRidge
-from .hnbm import HNBM
+from hnbm import HNBM
 
 
 class SnapBoost(HNBM):

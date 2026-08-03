@@ -1,5 +1,6 @@
 # pip3 install -r requirements.txt
 
+hnbm>=0.1.0
 pandas~=0.24.2
 numpy~=1.18.1
 scipy==1.2.1

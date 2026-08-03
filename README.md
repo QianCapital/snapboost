@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![scikit-learn](https://img.shields.io/badge/scikit--learn-compatible-blue.svg)](https://scikit-learn.org/)
 
-**Heterogeneous Newton Boosting Machine (HNBM)** — a gradient boosting framework that mixes decision trees and kernel ridge regressors instead of trees alone.
+**Heterogeneous Newton Boosting Machine (HNBM)** — a gradient boosting framework that mixes decision trees and kernel ridge regressors instead of trees alone. The core [HNBM](https://github.com/qiancapital-dev/hnbm) framework is provided by the `hnbm` package; SnapBoost is a concrete implementation built on top of it.
 
 Unlike XGBoost and LightGBM, which rely exclusively on decision trees as base learners, SnapBoost stochastically selects from a heterogeneous pool of learners at each boosting iteration. This lets the model capture both local, axis-aligned structure (trees) and smooth, global patterns (RBF kernel ridge).
 
@@ -153,11 +153,11 @@ model.fit(X, y)
 
 ### HNBM
 
-The abstract base class for building custom heterogeneous ensembles. Subclass or configure `base_learners_` and `probabilities_` before calling `fit`:
+The abstract base class for building custom heterogeneous ensembles. Provided by the [`hnbm`](https://pypi.org/project/hnbm/) package — subclass or configure `base_learners_` and `probabilities_` before calling `fit`:
 
 ```python
 from sklearn.tree import DecisionTreeRegressor
-from snapboost import HNBM
+from hnbm import HNBM
 
 class MyBoost(HNBM):
     def __init__(self, **kwargs):

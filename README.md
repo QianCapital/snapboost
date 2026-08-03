@@ -19,6 +19,7 @@ This package is a Python/scikit-learn reimplementation inspired by [SnapBoost: A
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [API Reference](#api-reference)
+  - [SnapBoostClassifier / SnapBoostRegressor](#snapboostclassifier--snapboostregressor)
   - [SnapBoost](#snapboost)
   - [HNBM](#hnbm)
 - [Parameters](#parameters)
@@ -58,7 +59,7 @@ cd snapboost
 pip install .
 ```
 
-**Requirements**: Python ≥ 3.6, NumPy, scikit-learn, tqdm (see `requirements.txt` for pinned versions).
+**Requirements**: Python ≥ 3.8, NumPy, scikit-learn, tqdm, [`hnbm`](https://pypi.org/project/hnbm/) ≥ 0.1.1.
 
 ---
 
@@ -69,15 +70,14 @@ pip install .
 ```python
 from sklearn.datasets import load_breast_cancer
 from sklearn.model_selection import train_test_split
-from snapboost import SnapBoost
+from snapboost import SnapBoostClassifier
 
 X, y = load_breast_cancer(return_X_y=True)
 X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)
 
-model = SnapBoost(
+model = SnapBoostClassifier(
     num_iterations=100,
     learning_rate=0.1,
-    mode="classification",
     random_state=42,
 )
 model.fit(X_train, y_train)
@@ -92,15 +92,14 @@ model.evaluate(X_test, y_test)  # prints log loss
 ```python
 from sklearn.datasets import load_diabetes
 from sklearn.model_selection import train_test_split
-from snapboost import SnapBoost
+from snapboost import SnapBoostRegressor
 
 X, y = load_diabetes(return_X_y=True)
 X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)
 
-model = SnapBoost(
+model = SnapBoostRegressor(
     num_iterations=100,
     learning_rate=0.1,
-    mode="regression",
     random_state=42,
 )
 model.fit(X_train, y_train)
@@ -113,14 +112,49 @@ model.evaluate(X_test, y_test)  # prints RMSE
 
 ## API Reference
 
-### SnapBoost
+### SnapBoostClassifier / SnapBoostRegressor
 
-The main entry point. A concrete HNBM that builds an ensemble from:
+The recommended entry points (similar to `XGBClassifier` / `XGBRegressor`). A concrete HNBM that builds an ensemble from:
 
 - **Decision trees** with depths sampled uniformly from `[min_max_depth, max_max_depth]`
-- **One kernel ridge regressor** (RBF kernel) for smooth global fits
+- **One RFF ridge regressor** for smooth global fits
 
 At each iteration, a learner is chosen with probability `p_tree` for trees (split evenly across depths) and `1 - p_tree` for the ridge model.
+
+```python
+from snapboost import SnapBoostClassifier, SnapBoostRegressor
+
+clf = SnapBoostClassifier(
+    num_iterations=100,
+    learning_rate=0.1,
+    p_tree=0.8,
+    min_max_depth=4,
+    max_max_depth=8,
+    alpha=1.0,
+    gamma=1.0,
+    random_state=42,
+    verbose=True,
+)
+clf.fit(X, y)
+
+reg = SnapBoostRegressor(num_iterations=100, random_state=42)
+reg.fit(X, y)
+```
+
+**Methods**
+
+| Method | Classifier | Regressor | Description |
+|--------|------------|-----------|-------------|
+| `fit(X, y)` | ✓ | ✓ | Train the ensemble |
+| `predict(X)` | ✓ | ✓ | Class labels (0/1) or continuous values |
+| `predict_proba(X)` | ✓ | | Class probabilities, shape `(n_samples, 2)` |
+| `decision_function(X)` | ✓ | | Raw logits |
+| `score(X, y)` | ✓ | ✓ | Accuracy or R² |
+| `evaluate(X, y)` | ✓ | ✓ | Prints and returns log loss or RMSE |
+
+### SnapBoost
+
+Legacy class that accepts a `mode` parameter (`"classification"` or `"regression"`). Prefer `SnapBoostClassifier` or `SnapBoostRegressor` for new code.
 
 ```python
 from snapboost import SnapBoost
@@ -140,26 +174,15 @@ model = SnapBoost(
 model.fit(X, y)
 ```
 
-**Methods**
-
-| Method | Mode | Description |
-|--------|------|-------------|
-| `fit(X, y)` | both | Train the ensemble |
-| `predict(X)` | both | Class labels (0/1) or continuous values |
-| `predict_proba(X)` | classification | Class probabilities, shape `(n_samples, 2)` |
-| `decision_function(X)` | classification | Raw logits |
-| `score(X, y)` | both | Accuracy (classification) or R² (regression) |
-| `evaluate(X, y)` | both | Prints and returns log loss or RMSE |
-
 ### HNBM
 
 The abstract base class for building custom heterogeneous ensembles. Provided by the [`hnbm`](https://pypi.org/project/hnbm/) package — subclass or configure `base_learners_` and `probabilities_` before calling `fit`:
 
 ```python
 from sklearn.tree import DecisionTreeRegressor
-from hnbm import HNBM
+from hnbm import HNBMClassifier, HNBMRegressor
 
-class MyBoost(HNBM):
+class MyClassifier(HNBMClassifier):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.base_learners_ = [DecisionTreeRegressor(max_depth=5)]
@@ -170,15 +193,16 @@ class MyBoost(HNBM):
 
 ## Parameters
 
-### Shared (`HNBM` / `SnapBoost`)
+### Shared (`HNBM` / `SnapBoostClassifier` / `SnapBoostRegressor`)
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `num_iterations` | `int` | `100` | Number of boosting rounds |
 | `learning_rate` | `float` | `0.1` | Shrinkage applied to each learner's contribution |
-| `mode` | `str` | `"classification"` | `"classification"` or `"regression"` |
 | `random_state` | `int` or `None` | `None` | Seed for learner selection and tree fitting |
 | `verbose` | `bool` | `True` | Show a tqdm progress bar during training |
+
+The legacy `SnapBoost` class also accepts a `mode` parameter (`"classification"` or `"regression"`).
 
 ### SnapBoost-specific
 
@@ -187,8 +211,9 @@ class MyBoost(HNBM):
 | `p_tree` | `float` | `0.8` | Probability of selecting a decision tree (vs. ridge) |
 | `min_max_depth` | `int` | `4` | Minimum `max_depth` for trees in the pool |
 | `max_max_depth` | `int` | `8` | Maximum `max_depth` for trees in the pool |
-| `alpha` | `float` | `1.0` | L2 regularization for `KernelRidge` |
-| `gamma` | `float` | `1.0` | RBF kernel coefficient for `KernelRidge` |
+| `alpha` | `float` | `1.0` | L2 regularization for the RFF ridge regressor |
+| `gamma` | `float` | `1.0` | RBF kernel coefficient for random Fourier features |
+| `n_components` | `int` | `100` | Number of random Fourier features |
 
 **Label conventions (classification)**: accepts `0`/`1` or `-1`/`+1`. Predictions are returned as `0`/`1`.
 

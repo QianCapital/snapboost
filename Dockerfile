@@ -8,4 +8,4 @@ COPY snapboost/ snapboost/
 RUN pip install --no-cache-dir --upgrade pip \
  && pip install --no-cache-dir .
 
-CMD ["python", "-c", "from snapboost import SnapBoost, HNBM; print('SnapBoost ready')"]
+CMD ["python", "-c", "from snapboost import SnapBoostClassifier, SnapBoostRegressor, HNBM; print('SnapBoost ready')"]

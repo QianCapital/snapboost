@@ -21,7 +21,7 @@ def _parse_requirements(file_path):
 
 setup(
     name="snapboost",
-    version="0.1.4",
+    version="0.1.5",
     author="Qian Capital",
     author_email="samson.qian@qiancapital.com",
     packages=["snapboost"],
@@ -31,6 +31,6 @@ setup(
     long_description=README,
     long_description_content_type="text/markdown",
     install_requires=_parse_requirements("requirements.txt"),
-    python_requires=">=3.6",
+    python_requires=">=3.8",
     keywords="boosting gradient-boosting snapboost",
 )

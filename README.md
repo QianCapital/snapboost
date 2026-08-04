@@ -14,6 +14,7 @@ This package is a Python/scikit-learn reimplementation inspired by [SnapBoost: A
 
 ## Table of Contents
 
+- [Documentation](#documentation)
 - [Features](#features)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
@@ -27,6 +28,20 @@ This package is a Python/scikit-learn reimplementation inspired by [SnapBoost: A
 - [Development](#development)
 - [References & Citation](#references--citation)
 - [License](#license)
+
+---
+
+## Documentation
+
+Qian Capital branded docs (Read the Docs layout) live in [`docs/`](docs/).
+
+```bash
+pip install -r docs/requirements.txt
+cd docs && make html
+# open _build/html/index.html
+```
+
+When GitHub Pages is enabled, the site deploys to https://qiancapital.github.io/snapboost/.
 
 ---
 

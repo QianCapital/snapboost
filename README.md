@@ -59,7 +59,7 @@ cd snapboost
 pip install .
 ```
 
-**Requirements**: Python ≥ 3.8, NumPy, scikit-learn, tqdm, [`hnbm`](https://pypi.org/project/hnbm/) ≥ 0.2.0.
+**Requirements**: Python ≥ 3.8, NumPy, scikit-learn, tqdm, [`hnbm`](https://pypi.org/project/hnbm/) ≥ 0.2.1.
 
 ---
 

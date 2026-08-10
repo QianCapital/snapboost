@@ -1,3 +1,5 @@
+from numbers import Integral
+
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.kernel_ridge import KernelRidge
 from hnbm import HNBM, HNBMClassifier, HNBMRegressor
@@ -33,11 +35,11 @@ class _SnapBoostMixin:
     def _validate_snapboost_params(self):
         if not 0.0 <= self.p_tree <= 1.0:
             raise ValueError(f"p_tree must be between 0 and 1, got {self.p_tree}.")
-        if not isinstance(self.min_max_depth, int) or self.min_max_depth < 1:
+        if not isinstance(self.min_max_depth, Integral) or self.min_max_depth < 1:
             raise ValueError(
                 f"min_max_depth must be an integer >= 1, got {self.min_max_depth}."
             )
-        if not isinstance(self.max_max_depth, int) or self.max_max_depth < 1:
+        if not isinstance(self.max_max_depth, Integral) or self.max_max_depth < 1:
             raise ValueError(
                 f"max_max_depth must be an integer >= 1, got {self.max_max_depth}."
             )
@@ -279,11 +281,11 @@ class SnapBoost_KernelRidge(HNBM):
     def _validate_snapboost_params(self):
         if not 0.0 <= self.p_tree <= 1.0:
             raise ValueError(f"p_tree must be between 0 and 1, got {self.p_tree}.")
-        if not isinstance(self.min_max_depth, int) or self.min_max_depth < 1:
+        if not isinstance(self.min_max_depth, Integral) or self.min_max_depth < 1:
             raise ValueError(
                 f"min_max_depth must be an integer >= 1, got {self.min_max_depth}."
             )
-        if not isinstance(self.max_max_depth, int) or self.max_max_depth < 1:
+        if not isinstance(self.max_max_depth, Integral) or self.max_max_depth < 1:
             raise ValueError(
                 f"max_max_depth must be an integer >= 1, got {self.max_max_depth}."
             )

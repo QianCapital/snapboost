@@ -12,7 +12,7 @@ requires-python = ">=3.8"
 authors = [{name = "Qian Capital", email = "samson.qian@qiancapital.com"}]
 keywords = ["boosting", "gradient-boosting", "snapboost", "heterogeneous-newton"]
 dependencies = [
-    "hnbm>=0.2.0",
+    "hnbm>=0.2.1",
     "numpy>=1.20",
     "scikit-learn>=1.0",
     "tqdm>=4.50",

@@ -59,7 +59,7 @@ cd snapboost
 pip install .
 ```
 
-**Requirements**: Python ≥ 3.8, NumPy, scikit-learn, tqdm, [`hnbm`](https://pypi.org/project/hnbm/) ≥ 0.1.1.
+**Requirements**: Python ≥ 3.8, NumPy, scikit-learn, tqdm, [`hnbm`](https://pypi.org/project/hnbm/) ≥ 0.2.0.
 
 ---
 
@@ -123,7 +123,7 @@ Interactive Jupyter notebooks in [`static/`](static/) walk through classificatio
 Run the notebooks locally:
 
 ```bash
-pip install -r requirements.txt xgboost lightgbm
+pip install ".[examples]"
 jupyter notebook static/
 ```
 
@@ -255,7 +255,7 @@ class MyClassifier(HNBMClassifier):
 | `num_iterations` | `int` | `100` | Number of boosting rounds |
 | `learning_rate` | `float` | `0.1` | Shrinkage applied to each learner's contribution |
 | `random_state` | `int` or `None` | `None` | Seed for learner selection and tree fitting |
-| `verbose` | `bool` | `True` | Show a tqdm progress bar during training |
+| `verbose` | `bool` | `False` | Show a tqdm progress bar during training |
 
 The legacy `SnapBoost` class also accepts a `mode` parameter (`"classification"` or `"regression"`).
 
@@ -263,9 +263,9 @@ The legacy `SnapBoost` class also accepts a `mode` parameter (`"classification"`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `p_tree` | `float` | `0.8` | Probability of selecting a decision tree (vs. ridge) |
-| `min_max_depth` | `int` | `4` | Minimum `max_depth` for trees in the pool |
-| `max_max_depth` | `int` | `8` | Maximum `max_depth` for trees in the pool |
+| `p_tree` | `float` | `0.9` | Probability of selecting a decision tree (vs. ridge) |
+| `min_max_depth` | `int` | `2` | Minimum `max_depth` for trees in the pool |
+| `max_max_depth` | `int` | `4` | Maximum `max_depth` for trees in the pool |
 | `alpha` | `float` | `1.0` | L2 regularization for the RFF ridge regressor |
 | `gamma` | `float` | `1.0` | RBF kernel coefficient for random Fourier features |
 | `n_components` | `int` | `100` | Number of random Fourier features |
@@ -296,8 +296,8 @@ SnapBoost ready
 ```bash
 git clone https://github.com/qiancapital/snapboost.git
 cd snapboost
-pip install -r requirements.txt
-pip install -e .
+pip install -e ".[examples,test]"
+pytest
 jupyter notebook static/   # optional: run example notebooks
 ```
 

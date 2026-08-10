@@ -33,9 +33,13 @@ class _SnapBoostMixin:
     def _validate_snapboost_params(self):
         if not 0.0 <= self.p_tree <= 1.0:
             raise ValueError(f"p_tree must be between 0 and 1, got {self.p_tree}.")
-        if self.min_max_depth < 0:
+        if not isinstance(self.min_max_depth, int) or self.min_max_depth < 1:
             raise ValueError(
-                f"min_max_depth must be >= 0, got {self.min_max_depth}."
+                f"min_max_depth must be an integer >= 1, got {self.min_max_depth}."
+            )
+        if not isinstance(self.max_max_depth, int) or self.max_max_depth < 1:
+            raise ValueError(
+                f"max_max_depth must be an integer >= 1, got {self.max_max_depth}."
             )
         if self.min_max_depth > self.max_max_depth:
             raise ValueError("min_max_depth must be <= max_max_depth.")
@@ -89,7 +93,7 @@ class _SnapBoostMixin:
         return result
 
 
-class SnapBoost(HNBM, _SnapBoostMixin):
+class SnapBoost(_SnapBoostMixin, HNBM):
     """
     A particular realization of a HNBM that uses decision trees and RFF ridge regressors.
 
@@ -124,7 +128,7 @@ class SnapBoost(HNBM, _SnapBoostMixin):
         n_components=100,
         mode="classification",
         random_state=None,
-        verbose=True,
+        verbose=False,
     ):
         self._init_snapboost_params(
             p_tree=p_tree,
@@ -143,7 +147,7 @@ class SnapBoost(HNBM, _SnapBoostMixin):
         return self._set_snapboost_params(**params)
 
 
-class SnapBoostClassifier(HNBMClassifier, _SnapBoostMixin):
+class SnapBoostClassifier(_SnapBoostMixin, HNBMClassifier):
     """
     SnapBoost for binary classification.
 
@@ -163,7 +167,7 @@ class SnapBoostClassifier(HNBMClassifier, _SnapBoostMixin):
         gamma=1.0,
         n_components=100,
         random_state=None,
-        verbose=True,
+        verbose=False,
     ):
         self._init_snapboost_params(
             p_tree=p_tree,
@@ -189,7 +193,7 @@ class SnapBoostClassifier(HNBMClassifier, _SnapBoostMixin):
         return self._set_snapboost_params(**params)
 
 
-class SnapBoostRegressor(HNBMRegressor, _SnapBoostMixin):
+class SnapBoostRegressor(_SnapBoostMixin, HNBMRegressor):
     """
     SnapBoost for regression.
 
@@ -209,7 +213,7 @@ class SnapBoostRegressor(HNBMRegressor, _SnapBoostMixin):
         gamma=1.0,
         n_components=100,
         random_state=None,
-        verbose=True,
+        verbose=False,
     ):
         self._init_snapboost_params(
             p_tree=p_tree,
@@ -275,9 +279,13 @@ class SnapBoost_KernelRidge(HNBM):
     def _validate_snapboost_params(self):
         if not 0.0 <= self.p_tree <= 1.0:
             raise ValueError(f"p_tree must be between 0 and 1, got {self.p_tree}.")
-        if self.min_max_depth < 0:
+        if not isinstance(self.min_max_depth, int) or self.min_max_depth < 1:
             raise ValueError(
-                f"min_max_depth must be >= 0, got {self.min_max_depth}."
+                f"min_max_depth must be an integer >= 1, got {self.min_max_depth}."
+            )
+        if not isinstance(self.max_max_depth, int) or self.max_max_depth < 1:
+            raise ValueError(
+                f"max_max_depth must be an integer >= 1, got {self.max_max_depth}."
             )
         if self.min_max_depth > self.max_max_depth:
             raise ValueError("min_max_depth must be <= max_max_depth.")

@@ -28,7 +28,7 @@ reg.fit(X, y)
 
 | Method | Classifier | Regressor | Description |
 |--------|:----------:|:---------:|-------------|
-| `fit(X, y)` | ✓ | ✓ | Train the ensemble |
+| `fit(X, y, sample_weight=None, eval_set=None)` | ✓ | ✓ | Train, optionally with weights and validation data |
 | `predict(X)` | ✓ | ✓ | Class labels (0/1) or continuous values |
 | `predict_proba(X)` | ✓ | | Class probabilities, shape `(n_samples, 2)` |
 | `decision_function(X)` | ✓ | | Raw logits |
@@ -48,6 +48,20 @@ reg.fit(X, y)
    :show-inheritance:
    :no-index:
 ```
+
+Fitted adaptive models expose `base_score_`, `learner_weights_`, `history_`,
+`best_iteration_`, and `n_iter_`. Early stopping restores the best validation
+ensemble before `fit` returns.
+
+Models also inherit `compact(min_abs_weight=0.0, inplace=False)` from HNBM.
+Compaction is explicit and never runs automatically.
+
+## Tabular preprocessing
+
+`make_tabular_preprocessor()` returns a dense scikit-learn `ColumnTransformer`
+that median-imputes numeric data, adds optional missingness indicators, and
+imputes/one-hot encodes categorical data with unseen-category support. Use it in
+a normal `Pipeline`; it does not modify SnapBoost internals.
 
 
 ## SnapBoost (legacy)
@@ -77,7 +91,7 @@ model.fit(X, y)
 
 ## RandomFourierRidgeRegressor
 
-Ridge regression on random Fourier features approximating an RBF kernel. Used as the non-tree learner in the SnapBoost pool.
+Ridge regression on random Fourier features approximating RBF or Laplacian kernels. Used as a non-tree learner in the SnapBoost pool.
 
 ```{eval-rst}
 .. autoclass:: snapboost.RandomFourierRidgeRegressor
@@ -85,6 +99,16 @@ Ridge regression on random Fourier features approximating an RBF kernel. Used as
    :undoc-members:
    :show-inheritance:
    :no-index:
+```
+
+## Optional learner and preprocessing helpers
+
+```{eval-rst}
+.. autoclass:: snapboost.WeightedLinearRegressor
+   :members: fit, predict
+   :show-inheritance:
+
+.. autofunction:: snapboost.make_tabular_preprocessor
 ```
 
 ## HNBM

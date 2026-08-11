@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![scikit-learn](https://img.shields.io/badge/scikit--learn-compatible-blue.svg)](https://scikit-learn.org/)
 
-**SnapBoost** is an instance of a **Heterogeneous Newton Boosting Machine (HNBM)** — a generalized gradient boosting framework that supports the use of various types of learners aside from trees. Snapboost is an HNBM that mixes decision trees and kernel ridge regressors instead of trees alone. The core [HNBM](https://github.com/qiancapital-dev/hnbm) framework is provided by the `hnbm` package; SnapBoost is a concrete implementation built on top of it.
+**SnapBoost** is an instance of a **Heterogeneous Newton Boosting Machine (HNBM)** — a generalized gradient boosting framework that supports the use of various types of learners aside from trees. Snapboost is an HNBM that mixes decision trees and kernel ridge regressors instead of trees alone. The core [HNBM](https://github.com/qiancapital/hnbm) framework is provided by the `hnbm` package; SnapBoost is a concrete implementation built on top of it.
 
 Unlike XGBoost and LightGBM, which rely exclusively on decision trees as base learners, SnapBoost stochastically selects from a heterogeneous pool of learners at each boosting iteration. This lets the model capture both local, axis-aligned structure (trees) and smooth, global patterns (RBF kernel ridge).
 
@@ -41,7 +41,7 @@ cd docs && make html
 # open _build/html/index.html
 ```
 
-Documentation is published at https://snapboost.qiancapital.com/ (GitHub Pages). The live docs on `/` track `master` (**latest**). Release snapshots are under `/vX.Y.Z/` (for example `/v0.1.7/`). Use the version dropdown under **SnapBoost** in the sidebar to switch between them.
+Documentation is published at https://snapboost.qiancapital.com/ (GitHub Pages). The live docs on `/` track `master` (**latest**). Release snapshots are under `/vX.Y.Z/` (for example `/v0.2.0/`). Use the version dropdown under **SnapBoost** in the sidebar to switch between them.
 
 ---
 
@@ -74,7 +74,7 @@ cd snapboost
 pip install .
 ```
 
-**Requirements**: Python ≥ 3.9, NumPy, scikit-learn, tqdm, [`hnbm`](https://pypi.org/project/hnbm/) ≥ 0.2.2.
+**Requirements**: Python ≥ 3.9, NumPy, scikit-learn, tqdm, [`hnbm`](https://pypi.org/project/hnbm/) ≥ 0.3.0.
 
 ---
 
@@ -121,6 +121,68 @@ model.fit(X_train, y_train)
 
 print("R²:", model.score(X_test, y_test))
 model.evaluate(X_test, y_test)  # prints RMSE
+```
+
+### Adaptive training
+
+Version 0.2 adds an opt-in adaptive training path while preserving the original
+random HNBM algorithm by default:
+
+```python
+model = SnapBoostRegressor(
+    num_iterations=500,
+    learning_rate=0.05,
+    selection_strategy="greedy",  # fit the best learner family each round
+    line_search=True,              # tune each learner's contribution
+    subsample=0.8,                 # stochastic row sampling
+    max_features=0.8,              # tree feature sampling
+    early_stopping_rounds=30,
+    random_state=42,
+)
+model.fit(
+    X_train,
+    y_train,
+    sample_weight=train_weights,
+    eval_set=(X_validation, y_validation),
+)
+
+print(model.best_iteration_)
+print(model.history_["validation_loss"])
+```
+
+The RFF branch now standardizes its inputs by default and receives a fresh,
+reproducible random basis each boosting round. Set `scale_features=False` only
+when inputs have already been placed on comparable scales.
+
+### Optional additive extensions
+
+The classic learner pool remains the default. Additional families and kernels
+are enabled explicitly:
+
+```python
+model = SnapBoostRegressor(
+    p_tree=0.7,
+    p_linear=0.1,
+    kernel_gammas=(0.05, 0.5, 5.0),
+    kernel_types=("rbf", "laplacian"),
+    objective="pseudo_huber",
+    objective_parameter=2.0,
+    random_state=42,
+)
+model.fit(X_train, y_train, candidate_n_jobs=4)
+```
+
+Missing and categorical inputs can be handled outside the estimator with a
+normal scikit-learn pipeline, keeping SnapBoost's model format unchanged:
+
+```python
+from sklearn.pipeline import Pipeline
+from snapboost import make_tabular_preprocessor
+
+pipeline = Pipeline([
+    ("prepare", make_tabular_preprocessor(categorical_features=(1, 4))),
+    ("model", SnapBoostRegressor(random_state=42)),
+])
 ```
 
 ---
@@ -215,7 +277,7 @@ reg.fit(X, y)
 
 | Method | Classifier | Regressor | Description |
 |--------|------------|-----------|-------------|
-| `fit(X, y)` | ✓ | ✓ | Train the ensemble |
+| `fit(X, y, sample_weight=None, eval_set=None)` | ✓ | ✓ | Train, optionally with weights and one validation pair |
 | `predict(X)` | ✓ | ✓ | Original class labels or continuous values |
 | `predict_proba(X)` | ✓ | | Class probabilities, shape `(n_samples, 2)` |
 | `decision_function(X)` | ✓ | | Raw logits |
@@ -290,6 +352,11 @@ class MyClassifier(HNBMClassifier):
 | `learning_rate` | `float` | `0.1` | Shrinkage applied to each learner's contribution |
 | `random_state` | non-negative `int` or `None` | `None` | Seed for learner selection and independently derived base-learner seeds |
 | `verbose` | `bool` | `False` | Show a tqdm progress bar during training |
+| `selection_strategy` | `{"random", "greedy"}` | `"random"` | Sample a learner or choose the lowest-loss candidate each round |
+| `line_search` | `bool` | `False` | Select a separate contribution weight for every learner |
+| `subsample` | `float` | `1.0` | Fraction of rows used to fit each base learner |
+| `early_stopping_rounds` | positive `int` or `None` | `None` | Validation patience before restoring the best ensemble |
+| `min_delta` | `float` | `0.0` | Minimum validation-loss improvement |
 
 The legacy `SnapBoost` class also accepts a `mode` parameter (`"classification"` or `"regression"`).
 
@@ -298,12 +365,27 @@ The legacy `SnapBoost` class also accepts a `mode` parameter (`"classification"`
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `p_tree` | `float` | `0.9` | Probability of selecting a decision tree (vs. ridge) |
+| `p_linear` | `float` | `0.0` | Optional probability allocated to a weighted raw linear learner |
 | `min_max_depth` | `int` | `2` | Minimum `max_depth` for trees in the pool |
 | `max_max_depth` | `int` | `4` | Maximum `max_depth` for trees in the pool |
 | `min_samples_leaf` | `int` | `10` | Minimum number of samples required in each decision-tree leaf |
 | `alpha` | `float` | `1.0` | L2 regularization for the RFF ridge regressor |
 | `gamma` | `float` | `1.0` | RBF kernel coefficient for random Fourier features |
 | `n_components` | `int` | `100` | Number of random Fourier features |
+| `scale_features` | `bool` | `True` | Standardize features before the RFF mapping |
+| `max_features` | `None`, `int`, `float`, or `str` | `None` | Features considered at each tree split |
+| `kernel_gammas` | sequence or `None` | `None` | Optional RFF bandwidth pool; `None` uses `gamma` |
+| `kernel_types` | sequence | `("rbf",)` | RFF kernel families: RBF and/or Laplacian |
+| `monotonic_cst` | sequence or `None` | `None` | Optional tree monotonic directions when supported by scikit-learn |
+
+The adaptive shared parameters are exposed by the recommended
+`SnapBoostClassifier` and `SnapBoostRegressor` classes. Legacy and exact-kernel
+classes retain their existing constructor surface for compatibility.
+
+After fitting, `base_score_` is the optimized constant prediction,
+`learner_weights_` stores per-round contributions, `history_` contains training
+and optional validation loss, and `best_iteration_` identifies the final
+restored iteration.
 
 **Label conventions (classification)**: accepts any two distinct class labels. Predictions use the original labels, and probability columns follow `classes_` order.
 

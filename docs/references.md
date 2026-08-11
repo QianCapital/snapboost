@@ -25,5 +25,5 @@ For the full bibliography, related heterogeneous-boosting literature (KTBoost, D
 
 | Project | Description |
 |---------|-------------|
-| [hnbm](https://github.com/qiancapital-dev/hnbm) | Core Heterogeneous Newton Boosting Machine framework |
+| [hnbm](https://github.com/qiancapital/hnbm) | Core Heterogeneous Newton Boosting Machine framework |
 | [IBM Snap ML](https://snapml.readthedocs.io/en/latest/boosting_machines.html) | Original C++/GPU SnapBoost implementation |

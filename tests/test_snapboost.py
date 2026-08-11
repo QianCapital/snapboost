@@ -1,12 +1,16 @@
 import pickle
+import inspect
 
 import numpy as np
 import pytest
 from sklearn.base import clone, is_classifier, is_regressor
 from sklearn.datasets import make_classification, make_regression
 from sklearn.model_selection import GridSearchCV
+from sklearn.tree import DecisionTreeRegressor
 
 from snapboost import (
+    RandomFourierRidgeRegressor,
+    WeightedLinearRegressor,
     SnapBoost,
     SnapBoostClassifier,
     SnapBoostKernelRidgeClassifier,
@@ -70,6 +74,23 @@ def test_regressor_works_with_grid_search():
     assert search.best_estimator_.ensemble_
 
 
+def test_fit_forwards_sample_weight_and_eval_set():
+    X, y = make_regression(n_samples=60, n_features=4, random_state=5)
+    sample_weight = np.linspace(1.0, 2.0, X.shape[0])
+    model = SnapBoostRegressor(
+        num_iterations=3,
+        random_state=5,
+    ).fit(
+        X,
+        y,
+        sample_weight=sample_weight,
+        eval_set=(X, y),
+    )
+
+    assert model.n_iter_ == 3
+    assert len(model.history_["validation_loss"]) == 3
+
+
 @pytest.mark.parametrize(
     "parameter, value, message",
     [
@@ -81,6 +102,9 @@ def test_regressor_works_with_grid_search():
         ("alpha", float("nan"), "finite"),
         ("gamma", float("inf"), "finite"),
         ("min_samples_leaf", 1.5, "integer"),
+        ("max_features", np.array([0.5]), "max_features"),
+        ("monotonic_cst", (0, 2), "monotonic_cst"),
+        ("p_linear", -0.1, "p_linear"),
     ],
 )
 def test_invalid_snapboost_parameters_are_rejected(parameter, value, message):
@@ -217,4 +241,146 @@ def test_task_specific_kernel_ridge_estimators_fit(estimator_class, checker):
 
 
 def test_package_exposes_version():
-    assert __version__ == "0.1.7"
+    assert __version__ == "0.2.0"
+
+
+def test_advanced_regressor_supports_greedy_selection_and_line_search():
+    X, y = make_regression(n_samples=80, n_features=4, random_state=7)
+    model = SnapBoostRegressor(
+        num_iterations=3,
+        selection_strategy="greedy",
+        line_search=True,
+        subsample=0.8,
+        max_features=0.75,
+        random_state=7,
+    ).fit(X, y)
+
+    assert model.n_iter_ == 3
+    assert len(model.learner_weights_) == 3
+    assert len(model.history_["training_loss"]) == 3
+    assert np.all(np.isfinite(model.predict(X)))
+
+
+def test_validation_and_sample_weights_flow_through_snapboost():
+    X, y = make_classification(n_samples=100, n_features=5, random_state=8)
+    weights = np.where(y == 1, 2.0, 1.0)
+    model = SnapBoostClassifier(
+        num_iterations=10,
+        early_stopping_rounds=2,
+        min_delta=1e100,
+        random_state=8,
+    ).fit(
+        X[:80], y[:80], sample_weight=weights[:80], eval_set=(X[80:], y[80:])
+    )
+
+    assert model.n_iter_ == 1
+    assert model.history_["validation_loss"]
+
+
+def test_rff_rounds_receive_distinct_reproducible_bases():
+    X, y = make_regression(n_samples=40, n_features=3, random_state=9)
+    model = SnapBoostRegressor(
+        num_iterations=2, p_tree=0.0, random_state=9
+    ).fit(X, y)
+
+    seeds = [learner.random_state for learner in model.ensemble_]
+    assert seeds[0] != seeds[1]
+    assert all(learner.pipeline_.named_steps.get("scale") is not None
+               for learner in model.ensemble_)
+
+
+def test_ridge_only_greedy_pool_contains_no_zero_probability_trees():
+    X, y = make_regression(n_samples=40, n_features=3, random_state=9)
+    model = SnapBoostRegressor(
+        num_iterations=2,
+        p_tree=0.0,
+        selection_strategy="greedy",
+        random_state=9,
+    ).fit(X, y)
+
+    assert model.probabilities_ == [1.0]
+    assert all(isinstance(learner, RandomFourierRidgeRegressor)
+               for learner in model.ensemble_)
+
+
+def test_multiscale_kernel_pool_is_opt_in_and_normalized():
+    X, y = make_regression(n_samples=30, n_features=3, random_state=9)
+    model = SnapBoostRegressor(
+        num_iterations=1,
+        p_tree=0.5,
+        min_max_depth=2,
+        max_max_depth=2,
+        kernel_gammas=(0.1, 1.0),
+        kernel_types=("rbf", "laplacian"),
+        random_state=9,
+    ).fit(X, y)
+
+    assert model.probabilities_ == pytest.approx([0.5, 0.125, 0.125, 0.125, 0.125])
+    kernels = [learner.kernel for learner in model.base_learners_[1:]]
+    gammas = [learner.gamma for learner in model.base_learners_[1:]]
+    assert kernels == ["rbf", "rbf", "laplacian", "laplacian"]
+    assert gammas == [0.1, 1.0, 0.1, 1.0]
+
+
+def test_monotonic_constraints_are_opt_in_and_version_guarded():
+    X, y = make_regression(n_samples=30, n_features=3, random_state=9)
+    model = SnapBoostRegressor(
+        num_iterations=1, monotonic_cst=(1, 0, -1), random_state=9
+    )
+    if "monotonic_cst" in inspect.signature(DecisionTreeRegressor).parameters:
+        model.fit(X, y)
+        tree = next(
+            learner for learner in model.base_learners_
+            if isinstance(learner, DecisionTreeRegressor)
+        )
+        assert tuple(tree.monotonic_cst) == (1, 0, -1)
+    else:
+        with pytest.raises(RuntimeError, match="scikit-learn"):
+            model.fit(X, y)
+
+
+def test_optional_linear_family_receives_explicit_probability():
+    X, y = make_regression(n_samples=30, n_features=3, random_state=9)
+    model = SnapBoostRegressor(
+        num_iterations=1,
+        p_tree=0.5,
+        p_linear=0.25,
+        min_max_depth=2,
+        max_max_depth=2,
+        random_state=9,
+    ).fit(X, y)
+
+    assert model.probabilities_ == pytest.approx([0.5, 0.25, 0.25])
+    assert isinstance(model.base_learners_[-1], WeightedLinearRegressor)
+
+
+def test_tree_and_linear_probabilities_cannot_exceed_one():
+    with pytest.raises(ValueError, match="p_tree.*p_linear"):
+        SnapBoostRegressor(p_tree=0.8, p_linear=0.3)
+
+
+def test_snapboost_forwards_objective_metrics_callbacks_and_parallelism():
+    X, y = make_regression(n_samples=50, n_features=3, random_state=9)
+    callback_iterations = []
+
+    def callback(state):
+        callback_iterations.append(state["iteration"])
+        return state["iteration"] == 1
+
+    model = SnapBoostRegressor(
+        num_iterations=10,
+        objective="pseudo_huber",
+        objective_parameter=2.0,
+        selection_strategy="greedy",
+        random_state=9,
+    ).fit(
+        X,
+        y,
+        eval_metric=lambda truth, raw: np.mean(np.abs(truth - raw)),
+        callbacks=[callback],
+        candidate_n_jobs=2,
+    )
+
+    assert model.n_iter_ == 2
+    assert callback_iterations == [0, 1]
+    assert len(model.history_["training_metric"]) == 2

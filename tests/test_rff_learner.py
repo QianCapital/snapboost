@@ -13,6 +13,9 @@ from snapboost import RandomFourierRidgeRegressor
         ("n_components", 1.5, "integer"),
         ("n_components", True, "integer"),
         ("random_state", True, "integer"),
+        ("random_state", -1, "between"),
+        ("random_state", 2**32, "between"),
+        ("kernel", "polynomial", "kernel"),
     ],
 )
 def test_invalid_parameters_are_rejected(parameter, value, message):
@@ -44,6 +47,20 @@ def test_weight_scaling_does_not_change_regularization_strength():
     )
 
     assert model.predict(X) == pytest.approx(scaled.predict(X))
+
+
+def test_zero_weight_sample_is_equivalent_to_removing_sample():
+    X = np.arange(20.0).reshape(10, 2)
+    y = np.arange(10.0)
+    weights = np.ones(10)
+    weights[-1] = 0.0
+
+    weighted = RandomFourierRidgeRegressor(random_state=2).fit(
+        X, y, sample_weight=weights
+    )
+    removed = RandomFourierRidgeRegressor(random_state=2).fit(X[:-1], y[:-1])
+
+    assert weighted.predict(X) == pytest.approx(removed.predict(X))
 
 
 @pytest.mark.parametrize(
@@ -97,3 +114,13 @@ def test_prediction_rejects_wrong_feature_count():
 
     with pytest.raises(ValueError, match="features"):
         model.predict(np.ones((3, 4)))
+
+
+def test_laplacian_random_features_fit_and_predict():
+    X = np.arange(20.0).reshape(10, 2)
+    y = np.arange(10.0)
+    model = RandomFourierRidgeRegressor(
+        kernel="laplacian", n_components=32, random_state=2
+    ).fit(X, y)
+
+    assert np.all(np.isfinite(model.predict(X)))

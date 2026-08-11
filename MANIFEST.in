@@ -1,5 +1,7 @@
 include README.md
+include CHANGELOG.md
 include REFERENCES.md
 include CITATION.bib
 include requirements.txt
 include Dockerfile
+recursive-include benchmarks *.py

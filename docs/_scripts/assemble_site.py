@@ -147,6 +147,19 @@ def assert_version_assets(version_dir: Path) -> None:
         )
 
 
+def backfill_version_assets(version_dir: Path, root_dir: Path) -> None:
+    for rel in REQUIRED_STATIC:
+        dest = version_dir / rel
+        if dest.is_file():
+            continue
+        source = root_dir / rel
+        if not source.is_file():
+            continue
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, dest)
+        print(f"Backfilled {version_dir.name}/{rel} from root docs assets.")
+
+
 def main() -> int:
     if not BUILD.is_dir():
         print(f"Build output missing: {BUILD}", file=sys.stderr)
@@ -201,6 +214,7 @@ def main() -> int:
     merge_local_snapshots()
 
     for ver in list_version_dirs(SITE):
+        backfill_version_assets(SITE / ver, SITE)
         assert_version_assets(SITE / ver)
 
     if DOCS_VERSION == "latest":

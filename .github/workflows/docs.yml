@@ -3,16 +3,18 @@ name: Docs
 on:
   push:
     branches: [main, master]
-    paths:
-      - "docs/**"
-      - "snapboost/**"
-      - ".github/workflows/docs.yml"
+    tags: ["v*"]
   pull_request:
     paths:
       - "docs/**"
       - "snapboost/**"
       - ".github/workflows/docs.yml"
   workflow_dispatch:
+    inputs:
+      snapshot_version:
+        description: "Publish this build under /vX.Y.Z/ (e.g. v0.1.7). Leave empty to publish as latest at /."
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -39,6 +41,19 @@ jobs:
         with:
           enablement: true
 
+      - name: Resolve docs version
+        id: ver
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.snapshot_version }}" ]]; then
+            VERSION="${{ inputs.snapshot_version }}"
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+          else
+            VERSION="latest"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Resolved DOCS_VERSION=$VERSION"
+
       - name: Install package and docs dependencies
         run: |
           python -m pip install --upgrade pip
@@ -46,18 +61,33 @@ jobs:
           pip install -r docs/requirements.txt
 
       - name: Build HTML
+        env:
+          DOCS_VERSION: ${{ steps.ver.outputs.version }}
         run: |
           cd docs
           make html
+
+      - name: Assemble site (preserve /v*/ trees)
+        if: github.event_name != 'pull_request'
+        env:
+          DOCS_VERSION: ${{ steps.ver.outputs.version }}
+          SITE_URL: https://snapboost.qiancapital.com
+        run: python3 docs/_scripts/assemble_site.py
 
       - name: Upload artifact
         if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
-          path: docs/_build/html
+          path: site
 
   deploy:
-    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    if: >
+      github.event_name != 'pull_request' && (
+        github.ref == 'refs/heads/main' ||
+        github.ref == 'refs/heads/master' ||
+        startsWith(github.ref, 'refs/tags/v') ||
+        github.event_name == 'workflow_dispatch'
+      )
     needs: build
     runs-on: ubuntu-latest
     environment:

@@ -33,7 +33,7 @@ This package is a Python/scikit-learn reimplementation inspired by [SnapBoost: A
 
 ## Documentation
 
-The Snapboost API documentation lives in [`docs/`](docs/). To build locally:
+The SnapBoost API documentation lives in [`docs/`](docs/). To build locally:
 
 ```bash
 pip install -r docs/requirements.txt
@@ -41,7 +41,7 @@ cd docs && make html
 # open _build/html/index.html
 ```
 
-When GitHub Pages is enabled, the site deploys to https://qiancapital.github.io/snapboost/.
+Documentation is published at https://snapboost.qiancapital.com/ (GitHub Pages). The live docs on `/` track `master` (**latest**). Release snapshots are under `/vX.Y.Z/` (for example `/v0.1.7/`). Use the version dropdown under **SnapBoost** in the sidebar to switch between them.
 
 ---
 
@@ -397,4 +397,4 @@ For the full bibliography, related heterogeneous-boosting literature (KTBoost, D
 
 ## License
 
-MIT — See [LICENSE](LICENSE) for full text.
+MIT License — Copyright (c) 2026 Qian Capital Management LLC (Qian Capital). See [LICENSE](LICENSE) for full text.

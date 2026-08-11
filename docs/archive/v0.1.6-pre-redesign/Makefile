@@ -1,18 +1,14 @@
-# Minimal makefile for Sphinx documentation
+# Minimal makefile for archived Sphinx documentation
 
 SPHINXOPTS    ?=
 SPHINXBUILD   ?= sphinx-build
 SOURCEDIR     = .
 BUILDDIR      = _build
-ARCHIVEDIR    = archive/v0.1.6-pre-redesign
 
 help:
 	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
-.PHONY: help Makefile archive
-
-archive:
-	@$(MAKE) -C "$(ARCHIVEDIR)" html
+.PHONY: help Makefile
 
 %: Makefile
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)

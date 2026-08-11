@@ -1,0 +1,35 @@
+{% extends "!layout.html" %}
+
+{%- block sidebartitle %}
+  {%- set _root_doc = root_doc|default(master_doc) %}
+  <a class="sb-title" href="{{ pathto(_root_doc) }}">SnapBoost</a>
+
+  {% if versions %}
+  <div class="sb-version-switch" role="navigation" aria-label="{{ _('Documentation version') }}">
+    <label class="sb-version-label" for="sb-version-select">{{ _('Version') }}</label>
+    <select id="sb-version-select" class="sb-version-select" data-current="{{ current_version }}">
+      {% for slug, url in versions %}
+      <option value="{{ url }}" {% if slug == current_version %}selected{% endif %}>{{ slug }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+
+  {%- include "searchbox.html" %}
+{%- endblock %}
+
+{%- block navigation %}
+  <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="{{ _('Navigation menu') }}">
+    {%- block menu %}
+      {%- set toctree = toctree(maxdepth=theme_navigation_depth|int,
+                                collapse=theme_collapse_navigation|tobool,
+                                includehidden=theme_includehidden|tobool,
+                                titles_only=theme_titles_only|tobool) %}
+      {%- if toctree %}
+        {{ toctree }}
+      {%- else %}
+        <div class="local-toc">{{ toc }}</div>
+      {%- endif %}
+    {%- endblock %}
+  </div>
+{%- endblock %}

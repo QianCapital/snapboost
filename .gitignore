@@ -70,6 +70,10 @@ instance/
 
 # Sphinx documentation
 docs/_build/
+docs/archive/**/_build/
+
+# Local GitHub Pages assemble output (docs/_scripts/assemble_site.py)
+/site/
 
 # PyBuilder
 target/

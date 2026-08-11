@@ -1,20 +1,15 @@
-# SnapBoost
+# SnapBoost Documentation
 
-```{raw} html
-<div class="qc-hero">
-  <div class="qc-hero-kicker">Qian Capital · Open Source</div>
-  <div class="qc-hero-title" aria-hidden="true">SnapBoost</div>
-  <p class="qc-hero-lead">A heterogeneous Newton boosting machine that mixes decision trees and random Fourier feature ridge regressors — scikit-learn compatible, built on HNBM.</p>
-  <div class="qc-meta">
-    <span class="qc-chip">v0.1.6</span>
-    <span class="qc-chip">Python ≥ 3.8</span>
-    <span class="qc-chip">scikit-learn</span>
-    <span class="qc-chip">MIT</span>
-  </div>
-</div>
-```
+**SnapBoost** is an instance of a heterogeneous Newton boosting machine that mixes decision trees and random Fourier feature (RFF) ridge regressors. **SnapBoost** is scikit-learn compatible and built on [HNBM](https://github.com/qiancapital-dev/hnbm).
 
-**SnapBoost** is a concrete [HNBM](https://github.com/qiancapital-dev/hnbm) implementation: at each boosting round it stochastically selects either a decision tree or an RFF ridge regressor. That mix captures both local, axis-aligned structure and smooth global patterns.
+At each boosting round, SnapBoost stochastically selects either a decision tree or an RFF ridge regressor. That mix captures both local, axis-aligned structure and smooth global patterns.
+
+Key properties:
+
+- Scikit-learn API (`fit` / `predict` / `score`)
+- Classification and regression estimators
+- Heterogeneous base learners (trees + RFF ridge)
+- Built on the HNBM framework
 
 Inspired by [SnapBoost: A Heterogeneous Boosting Machine](https://arxiv.org/abs/2006.09745) (Parnell et al., NeurIPS 2020).
 
@@ -37,7 +32,7 @@ print("Accuracy:", model.score(X_test, y_test))
 
 ```{toctree}
 :maxdepth: 2
-:caption: Documentation
+:caption: Contents
 
 installation
 quickstart
@@ -45,11 +40,5 @@ api
 parameters
 examples
 references
-```
-
-```{toctree}
-:maxdepth: 1
-:caption: Project
-
 license
 ```

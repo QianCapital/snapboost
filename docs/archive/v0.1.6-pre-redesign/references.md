@@ -1,4 +1,4 @@
-# References
+# References & Citation
 
 If you use this package or the HNBM framework in research, please cite the original SnapBoost paper:
 

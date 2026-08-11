@@ -8,6 +8,7 @@ version = "0.1.7"
 description = "SnapBoost heterogeneous Newton boosting with decision trees and RFF ridge regressors"
 readme = "README.md"
 license = {text = "MIT"}
+license-files = ["LICENSE"]
 requires-python = ">=3.8"
 authors = [{name = "Qian Capital", email = "samson.qian@qiancapital.com"}]
 keywords = ["boosting", "gradient-boosting", "snapboost", "heterogeneous-newton"]
@@ -31,7 +32,7 @@ test = ["pytest>=7"]
 
 [project.urls]
 Homepage = "https://github.com/qiancapital/snapboost"
-Documentation = "https://qiancapital.github.io/snapboost/"
+Documentation = "https://snapboost.qiancapital.com/"
 Repository = "https://github.com/qiancapital/snapboost"
 
 [tool.setuptools.packages.find]

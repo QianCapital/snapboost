@@ -1,4 +1,4 @@
-# Examples
+# Examples & Results
 
 Interactive Jupyter notebooks in [`static/`](https://github.com/qiancapital/snapboost/tree/main/static) walk through classification, regression, and hyperparameter exploration. Each notebook trains SnapBoost and compares it against **XGBoost** and **LightGBM** on the same splits.
 

@@ -59,7 +59,7 @@ cd snapboost
 pip install .
 ```
 
-**Requirements**: Python ≥ 3.8, NumPy, scikit-learn, tqdm, [`hnbm`](https://pypi.org/project/hnbm/) ≥ 0.2.1.
+**Requirements**: Python ≥ 3.8, NumPy, scikit-learn, tqdm, [`hnbm`](https://pypi.org/project/hnbm/) ≥ 0.2.2.
 
 ---
 
@@ -201,7 +201,7 @@ reg.fit(X, y)
 | Method | Classifier | Regressor | Description |
 |--------|------------|-----------|-------------|
 | `fit(X, y)` | ✓ | ✓ | Train the ensemble |
-| `predict(X)` | ✓ | ✓ | Class labels (0/1) or continuous values |
+| `predict(X)` | ✓ | ✓ | Original class labels or continuous values |
 | `predict_proba(X)` | ✓ | | Class probabilities, shape `(n_samples, 2)` |
 | `decision_function(X)` | ✓ | | Raw logits |
 | `score(X, y)` | ✓ | ✓ | Accuracy or R² |
@@ -229,6 +229,25 @@ model = SnapBoost(
 model.fit(X, y)
 ```
 
+### Exact kernel ridge variant
+
+For smaller datasets where an exact RBF kernel is preferable to random Fourier
+features, task-specific exact-kernel estimators are also available:
+
+```python
+from snapboost import (
+    SnapBoostKernelRidgeClassifier,
+    SnapBoostKernelRidgeRegressor,
+)
+
+clf = SnapBoostKernelRidgeClassifier(random_state=42)
+reg = SnapBoostKernelRidgeRegressor(random_state=42)
+```
+
+Exact kernel ridge has substantially higher memory and runtime costs than the
+default RFF learner. The old `SnapBoost_KernelRidge` name remains available for
+backward compatibility, but new code should use the task-specific classes.
+
 ### HNBM
 
 The abstract base class for building custom heterogeneous ensembles. Provided by the [`hnbm`](https://pypi.org/project/hnbm/) package — subclass or configure `base_learners_` and `probabilities_` before calling `fit`:
@@ -254,7 +273,7 @@ class MyClassifier(HNBMClassifier):
 |-----------|------|---------|-------------|
 | `num_iterations` | `int` | `100` | Number of boosting rounds |
 | `learning_rate` | `float` | `0.1` | Shrinkage applied to each learner's contribution |
-| `random_state` | `int` or `None` | `None` | Seed for learner selection and tree fitting |
+| `random_state` | non-negative `int` or `None` | `None` | Seed for learner selection and independently derived base-learner seeds |
 | `verbose` | `bool` | `False` | Show a tqdm progress bar during training |
 
 The legacy `SnapBoost` class also accepts a `mode` parameter (`"classification"` or `"regression"`).
@@ -266,11 +285,12 @@ The legacy `SnapBoost` class also accepts a `mode` parameter (`"classification"`
 | `p_tree` | `float` | `0.9` | Probability of selecting a decision tree (vs. ridge) |
 | `min_max_depth` | `int` | `2` | Minimum `max_depth` for trees in the pool |
 | `max_max_depth` | `int` | `4` | Maximum `max_depth` for trees in the pool |
+| `min_samples_leaf` | `int` | `10` | Minimum number of samples required in each decision-tree leaf |
 | `alpha` | `float` | `1.0` | L2 regularization for the RFF ridge regressor |
 | `gamma` | `float` | `1.0` | RBF kernel coefficient for random Fourier features |
 | `n_components` | `int` | `100` | Number of random Fourier features |
 
-**Label conventions (classification)**: accepts `0`/`1` or `-1`/`+1`. Predictions are returned as `0`/`1`.
+**Label conventions (classification)**: accepts any two distinct class labels. Predictions use the original labels, and probability columns follow `classes_` order.
 
 ---
 
@@ -293,13 +313,43 @@ SnapBoost ready
 
 ## Development
 
+For normal development against the released HNBM dependency, install SnapBoost
+in editable mode and run the complete validation suite:
+
 ```bash
 git clone https://github.com/qiancapital/snapboost.git
 cd snapboost
-pip install -e ".[examples,test]"
-pytest
-jupyter notebook static/   # optional: run example notebooks
+python -m pip install -e ".[test]"
+python -m pytest -q
+python -m compileall -q snapboost tests
 ```
+
+The pytest command must finish with all tests passing. To validate SnapBoost
+against a local sibling checkout of HNBM, install that checkout first:
+
+```bash
+python -m pip install -e ../hnbm
+python -m pip install -e ".[test]"
+python -m pytest -q
+```
+
+Run an individual test module or test while developing with:
+
+```bash
+python -m pytest -q tests/test_snapboost.py
+python -m pytest -q tests/test_rff_learner.py
+python -m pytest -q tests/test_snapboost.py::test_classifier_preserves_string_labels
+```
+
+The example notebooks require the separate examples dependencies:
+
+```bash
+python -m pip install -e ".[examples,test]"
+jupyter notebook static/
+```
+
+CI runs the full test suite on every push and pull request, and again before a
+release distribution is built.
 
 Releases are published to PyPI via GitHub Actions when a GitHub release is created.
 

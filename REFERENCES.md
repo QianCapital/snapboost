@@ -35,7 +35,7 @@ This Python package implements the HNBM / SnapBoost *idea* using scikit-learn ba
 | Aspect | Original SnapBoost (NeurIPS 2020) | This repository |
 |--------|-----------------------------------|-----------------|
 | Tree learners | Histogram-based BDTs, depth sampled per round | `DecisionTreeRegressor` with depths in `[min_max_depth, max_max_depth]` |
-| Non-tree learner | Linear regressor + random Fourier features | `KernelRidge` with RBF kernel |
+| Non-tree learner | Linear regressor + random Fourier features | `RandomFourierRidgeRegressor` using `RBFSampler` + `Ridge` |
 | Optimization | Custom C++ Newton boosting | Weighted least-squares fit to Newton direction (`-g/h`, weights `h`) |
 | API | IBM Snap ML `BoostingMachine*` | scikit-learn-style `SnapBoost` / `HNBM` |
 
@@ -92,7 +92,8 @@ These works directly motivated the HNBM design:
 | Reference | Link | Notes |
 |-----------|------|-------|
 | Rahimi & Recht (2007), *Random Features for Large-Scale Kernel Machines* | [NIPS 2007](https://papers.nips.cc/paper/3182-random-features-for-large-scale-kernel-machines) | Random Fourier feature approximation used in the original SnapBoost linear subclass |
-| — | — | This repo uses exact `KernelRidge` (RBF) instead of random features for simplicity |
+| Current implementation | — | `RandomFourierRidgeRegressor` uses `RBFSampler` followed by weighted `Ridge`, matching the random-feature structure while remaining pure Python/scikit-learn |
+| Optional exact-kernel variant | — | `SnapBoostKernelRidgeClassifier` and `SnapBoostKernelRidgeRegressor` use exact RBF `KernelRidge`; this costs substantially more memory and time on large datasets |
 
 ---
 

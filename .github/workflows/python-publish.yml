@@ -26,6 +26,11 @@ jobs:
         with:
           python-version: "3.x"
 
+      - name: Run tests
+        run: |
+          python -m pip install ".[test]"
+          python -m pytest
+
       - name: Build release distributions
         run: |
           # NOTE: put your own distribution build steps here.

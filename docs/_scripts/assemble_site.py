@@ -108,6 +108,20 @@ def copy_build(dest: Path) -> None:
     shutil.copytree(BUILD, dest, dirs_exist_ok=True)
 
 
+def merge_local_snapshots() -> None:
+    """Overlay locally built snapshots from docs/_build/snapshots/vX.Y.Z/."""
+    snapshots = WORKSPACE / "docs" / "_build" / "snapshots"
+    if not snapshots.is_dir():
+        return
+    for path in sorted(snapshots.iterdir()):
+        if path.is_dir() and VERSION_RE.fullmatch(path.name):
+            dest = SITE / path.name
+            if dest.exists():
+                shutil.rmtree(dest)
+            print(f"Installing local snapshot /{path.name}/ …")
+            shutil.copytree(path, dest)
+
+
 def main() -> int:
     if not BUILD.is_dir():
         print(f"Build output missing: {BUILD}", file=sys.stderr)
@@ -157,6 +171,9 @@ def main() -> int:
         copy_build(target)
         if not (SITE / "index.html").is_file():
             copy_build(SITE)
+
+    # Local bootstrapped snapshots win over preserved remote copies.
+    merge_local_snapshots()
 
     versions_path = write_versions_json(SITE)
     (SITE / ".nojekyll").touch()

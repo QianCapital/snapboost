@@ -33,7 +33,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.x"
+          python-version: "3.12"
 
       - name: Setup Pages
         if: github.event_name != 'pull_request'
@@ -66,6 +66,80 @@ jobs:
         run: |
           cd docs
           make html
+
+      - name: Bootstrap missing version snapshots
+        if: github.event_name != 'pull_request' && steps.ver.outputs.version == 'latest'
+        env:
+          SITE_URL: https://snapboost.qiancapital.com
+        run: |
+          python3 <<'PY'
+          import json
+          import os
+          import re
+          import shutil
+          import subprocess
+          import urllib.error
+          import urllib.request
+          from pathlib import Path
+
+          workspace = Path(os.environ["GITHUB_WORKSPACE"])
+          versions_path = workspace / "docs" / "versions.json"
+          site_url = os.environ["SITE_URL"].rstrip("/")
+          version_re = re.compile(r"^v\d+\.\d+\.\d+$")
+
+          wanted = []
+          if versions_path.is_file():
+              data = json.loads(versions_path.read_text(encoding="utf-8"))
+              wanted = [
+                  e["version"]
+                  for e in data
+                  if isinstance(e, dict) and version_re.fullmatch(str(e.get("version", "")))
+              ]
+
+          live = set()
+          try:
+              with urllib.request.urlopen(site_url + "/versions.json", timeout=30) as resp:
+                  payload = json.loads(resp.read().decode("utf-8"))
+              live = {
+                  e["version"]
+                  for e in payload
+                  if isinstance(e, dict) and version_re.fullmatch(str(e.get("version", "")))
+              }
+          except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError) as exc:
+              print(f"No live versions.json yet ({exc}); will bootstrap all listed snapshots.")
+
+          missing = [v for v in wanted if v not in live]
+          print("Wanted snapshots:", wanted)
+          print("Live snapshots:", sorted(live))
+          print("Missing snapshots:", missing)
+
+          docs = workspace / "docs"
+          snapshots = docs / "_build" / "snapshots"
+          if snapshots.exists():
+              shutil.rmtree(snapshots)
+          snapshots.mkdir(parents=True)
+
+          for ver in missing:
+              print(f"Building snapshot {ver} …")
+              html = docs / "_build" / "html"
+              if html.exists():
+                  shutil.rmtree(html)
+              env = os.environ.copy()
+              env["DOCS_VERSION"] = ver
+              subprocess.check_call(["make", "html"], cwd=docs, env=env)
+              dest = snapshots / ver
+              shutil.copytree(html, dest)
+              print(f"Stored snapshot at {dest}")
+
+          # Restore latest build for assemble root.
+          print("Rebuilding latest for site root …")
+          html = docs / "_build" / "html"
+          if html.exists():
+              shutil.rmtree(html)
+          env = os.environ.copy()
+          env["DOCS_VERSION"] = "latest"
+          subprocess.check_call(["make", "html"], cwd=docs, env=env)
+          PY
 
       - name: Assemble site (preserve /v*/ trees)
         if: github.event_name != 'pull_request'

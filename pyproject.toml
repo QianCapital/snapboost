@@ -39,9 +39,6 @@ Repository = "https://github.com/qiancapital/snapboost"
 [tool.setuptools]
 license-files = ["LICENSE"]
 
-[tool.setuptools]
-license-files = ["LICENSE"]
-
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["snapboost*"]

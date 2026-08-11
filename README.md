@@ -33,7 +33,7 @@ This package is a Python/scikit-learn reimplementation inspired by [SnapBoost: A
 
 ## Documentation
 
-Qian Capital branded docs (Read the Docs layout) live in [`docs/`](docs/).
+The Snapboost API documentation lives in [`docs/`](docs/). To build locally:
 
 ```bash
 pip install -r docs/requirements.txt

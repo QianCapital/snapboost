@@ -1,6 +1,6 @@
 # SnapBoost Documentation
 
-**SnapBoost** is an instance of a heterogeneous Newton boosting machine that mixes decision trees and random Fourier feature (RFF) ridge regressors. **SnapBoost** is scikit-learn compatible and built on [HNBM](https://github.com/qiancapital-dev/hnbm).
+**SnapBoost** is an instance of a Heterogeneous Newton Boosting Machine (HNBM) — a generalized gradient boosting framework that supports the use of various types of learners aside from trees. Snapboost is an HNBM that mixes decision trees and kernel ridge regressors instead of trees alone. **SnapBoost** is scikit-learn compatible and built on [HNBM](https://github.com/qiancapital-dev/hnbm).
 
 At each boosting round, SnapBoost stochastically selects either a decision tree or an RFF ridge regressor. That mix captures both local, axis-aligned structure and smooth global patterns.
 

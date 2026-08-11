@@ -6,7 +6,7 @@ If you use this package or the HNBM framework in research, please cite the origi
 
 ```bibtex
 @inproceedings{parnell2020snapboost,
-  title     = {{SnapBoost}: A Heterogeneous Boosting Machine},
+  title     = {SnapBoost: A Heterogeneous Boosting Machine},
   author    = {Parnell, Thomas and Anghel, Andreea and {\L}azuka, Ma{\l}gorzata and Ioannou, Nikolas and Kurella, Sebastian and Agarwal, Peshal and Papandreou, Nikolaos and Pozidis, Haralampos},
   booktitle = {Advances in Neural Information Processing Systems},
   volume    = {33},

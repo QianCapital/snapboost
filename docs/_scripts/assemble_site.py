@@ -147,6 +147,41 @@ def assert_version_assets(version_dir: Path) -> None:
         )
 
 
+def repair_version_assets(version_dir: Path) -> None:
+    """Repair an incomplete mirrored snapshot without replacing its HTML.
+
+    ``wget --page-requisites`` can omit stylesheet assets when a deployed site
+    redirects or rewrites static URLs. Prefer the asset belonging to the live
+    version, then fall back to an already mirrored root asset and finally the
+    current local Sphinx build. Local snapshots normally bypass this path.
+    """
+    for rel in REQUIRED_STATIC:
+        destination = version_dir / rel
+        if destination.is_file():
+            continue
+
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        live_url = f"{SITE_URL}/{version_dir.name}/{rel}"
+        try:
+            with urllib.request.urlopen(live_url, timeout=30) as response:
+                content = response.read()
+            if content:
+                destination.write_bytes(content)
+                print(f"Recovered /{version_dir.name}/{rel} from {live_url}")
+                continue
+        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError) as exc:
+            print(f"Could not recover {live_url}: {exc}")
+
+        for source in (SITE / rel, BUILD / rel):
+            if source.is_file():
+                shutil.copy2(source, destination)
+                print(
+                    f"Recovered /{version_dir.name}/{rel} from "
+                    f"{source.relative_to(WORKSPACE)}"
+                )
+                break
+
+
 def main() -> int:
     if not BUILD.is_dir():
         print(f"Build output missing: {BUILD}", file=sys.stderr)
@@ -201,6 +236,7 @@ def main() -> int:
     merge_local_snapshots()
 
     for ver in list_version_dirs(SITE):
+        repair_version_assets(SITE / ver)
         assert_version_assets(SITE / ver)
 
     if DOCS_VERSION == "latest":

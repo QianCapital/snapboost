@@ -68,7 +68,10 @@ jobs:
           make html
 
       - name: Rebuild version snapshots
-        if: github.event_name != 'pull_request' && steps.ver.outputs.version == 'latest'
+        # Build complete local snapshots on both latest and tagged releases.
+        # This keeps historical docs independent of wget's page-requisite
+        # handling and guarantees that every version carries its own assets.
+        if: github.event_name != 'pull_request'
         run: |
           python3 <<'PY'
           import json

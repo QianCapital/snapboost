@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![scikit-learn](https://img.shields.io/badge/scikit--learn-compatible-blue.svg)](https://scikit-learn.org/)
 
-**Heterogeneous Newton Boosting Machine (HNBM)** — a gradient boosting framework that mixes decision trees and kernel ridge regressors instead of trees alone. The core [HNBM](https://github.com/qiancapital-dev/hnbm) framework is provided by the `hnbm` package; SnapBoost is a concrete implementation built on top of it.
+**SnapBoost** is an instance of a **Heterogeneous Newton Boosting Machine (HNBM)** — a generalized gradient boosting framework that supports the use of various types of learners aside from trees. Snapboost is an HNBM that mixes decision trees and kernel ridge regressors instead of trees alone. The core [HNBM](https://github.com/qiancapital-dev/hnbm) framework is provided by the `hnbm` package; SnapBoost is a concrete implementation built on top of it.
 
 Unlike XGBoost and LightGBM, which rely exclusively on decision trees as base learners, SnapBoost stochastically selects from a heterogeneous pool of learners at each boosting iteration. This lets the model capture both local, axis-aligned structure (trees) and smooth, global patterns (RBF kernel ridge).
 
@@ -74,7 +74,7 @@ cd snapboost
 pip install .
 ```
 
-**Requirements**: Python ≥ 3.8, NumPy, scikit-learn, tqdm, [`hnbm`](https://pypi.org/project/hnbm/) ≥ 0.2.2.
+**Requirements**: Python ≥ 3.9, NumPy, scikit-learn, tqdm, [`hnbm`](https://pypi.org/project/hnbm/) ≥ 0.2.2.
 
 ---
 

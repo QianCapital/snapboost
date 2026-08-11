@@ -1,7 +1,5 @@
 [build-system]
-# Cap below 77: PEP 639 string licenses need setuptools>=77 (Python>=3.9),
-# but this project still supports Python 3.8 (setuptools<=75).
-requires = ["setuptools>=64,<77"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -9,8 +7,9 @@ name = "snapboost"
 version = "0.1.7"
 description = "SnapBoost heterogeneous Newton boosting with decision trees and RFF ridge regressors"
 readme = "README.md"
-license = {text = "MIT"}
-requires-python = ">=3.8"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.9"
 authors = [{name = "Qian Capital", email = "samson.qian@qiancapital.com"}]
 keywords = ["boosting", "gradient-boosting", "snapboost", "heterogeneous-newton"]
 dependencies = [
@@ -35,9 +34,6 @@ test = ["pytest>=7"]
 Homepage = "https://github.com/qiancapital/snapboost"
 Documentation = "https://snapboost.qiancapital.com/"
 Repository = "https://github.com/qiancapital/snapboost"
-
-[tool.setuptools]
-license-files = ["LICENSE"]
 
 [tool.setuptools.packages.find]
 where = ["."]

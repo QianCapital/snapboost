@@ -31,6 +31,8 @@ test = ["pytest>=7"]
 
 [project.urls]
 Homepage = "https://github.com/qiancapital/snapboost"
+Documentation = "https://qiancapital.github.io/snapboost/"
+Repository = "https://github.com/qiancapital/snapboost"
 
 [tool.setuptools.packages.find]
 where = ["."]

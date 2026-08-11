@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Assemble the GitHub Pages site tree for SnapBoost docs.
 
-Preserves existing /v*/ trees from the live site, overlays the new Sphinx
-build (root for latest, /vX.Y.Z/ for tagged/snapshot builds), and writes
-versions.json.
+Preserves existing /v*/ trees from the live site when needed, overlays the
+new Sphinx build, merges locally rebuilt snapshots, and writes versions.json.
 """
 
 from __future__ import annotations
@@ -23,7 +22,13 @@ DOCS_VERSION = os.environ["DOCS_VERSION"]
 WORKSPACE = Path(os.environ["GITHUB_WORKSPACE"])
 SITE = WORKSPACE / "site"
 BUILD = WORKSPACE / "docs" / "_build" / "html"
+SNAPSHOTS = WORKSPACE / "docs" / "_build" / "snapshots"
 VERSION_RE = re.compile(r"^v\d+\.\d+\.\d+$")
+REQUIRED_STATIC = [
+    "_static/css/theme.css",
+    "_static/css/qiancapital.css",
+    "_static/js/theme.js",
+]
 
 
 def fetch_json(url: str):
@@ -50,13 +55,14 @@ def live_reachable() -> bool:
 
 
 def wget_tree(url: str, dest_parent: Path) -> None:
-    """Mirror url into dest_parent, preserving the URL path under dest_parent."""
+    """Mirror a version tree, including CSS/JS page requisites."""
     dest_parent.mkdir(parents=True, exist_ok=True)
     cmd = [
         "wget",
         "--quiet",
         "--recursive",
         "--no-parent",
+        "--page-requisites",
         "--no-host-directories",
         "--directory-prefix",
         str(dest_parent),
@@ -74,6 +80,16 @@ def list_version_dirs(site: Path) -> list[str]:
         key=lambda v: tuple(int(x) for x in v[1:].split(".")),
         reverse=True,
     )
+
+
+def local_snapshot_versions() -> set[str]:
+    if not SNAPSHOTS.is_dir():
+        return set()
+    return {
+        p.name
+        for p in SNAPSHOTS.iterdir()
+        if p.is_dir() and VERSION_RE.fullmatch(p.name)
+    }
 
 
 def write_versions_json(site: Path) -> Path:
@@ -104,22 +120,31 @@ def clear_root(site: Path) -> None:
 
 
 def copy_build(dest: Path) -> None:
-    dest.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(BUILD, dest, dirs_exist_ok=True)
+    if dest.exists():
+        shutil.rmtree(dest)
+    shutil.copytree(BUILD, dest)
 
 
 def merge_local_snapshots() -> None:
     """Overlay locally built snapshots from docs/_build/snapshots/vX.Y.Z/."""
-    snapshots = WORKSPACE / "docs" / "_build" / "snapshots"
-    if not snapshots.is_dir():
+    if not SNAPSHOTS.is_dir():
         return
-    for path in sorted(snapshots.iterdir()):
+    for path in sorted(SNAPSHOTS.iterdir()):
         if path.is_dir() and VERSION_RE.fullmatch(path.name):
             dest = SITE / path.name
             if dest.exists():
                 shutil.rmtree(dest)
             print(f"Installing local snapshot /{path.name}/ …")
             shutil.copytree(path, dest)
+            (dest / ".nojekyll").touch()
+
+
+def assert_version_assets(version_dir: Path) -> None:
+    missing = [rel for rel in REQUIRED_STATIC if not (version_dir / rel).is_file()]
+    if missing:
+        raise SystemExit(
+            f"Snapshot {version_dir.name} is missing required static assets: {missing}"
+        )
 
 
 def main() -> int:
@@ -131,6 +156,7 @@ def main() -> int:
         shutil.rmtree(SITE)
     SITE.mkdir(parents=True)
 
+    rebuilt = local_snapshot_versions()
     existing_versions: list[str] = []
     if live_reachable():
         live = fetch_json(SITE_URL + "/versions.json") or []
@@ -140,21 +166,23 @@ def main() -> int:
             if isinstance(e, dict) and VERSION_RE.fullmatch(str(e.get("version", "")))
         ]
         print("Live versions:", existing_versions)
+        print("Locally rebuilt snapshots:", sorted(rebuilt))
 
         if DOCS_VERSION == "latest":
             for ver in existing_versions:
+                if ver in rebuilt:
+                    print(f"Skipping live preserve for /{ver}/ (local rebuild present)")
+                    continue
                 print(f"Preserving /{ver}/ …")
                 wget_tree(f"{SITE_URL}/{ver}/", SITE)
         else:
             print("Preserving root docs …")
-            # Fetch root pages only: wget follows links, so pull then drop other trees
-            # we will re-fetch explicitly.
             wget_tree(f"{SITE_URL}/", SITE)
             for child in list(SITE.iterdir()):
                 if child.is_dir() and VERSION_RE.fullmatch(child.name):
                     shutil.rmtree(child)
             for ver in existing_versions:
-                if ver == DOCS_VERSION:
+                if ver == DOCS_VERSION or ver in rebuilt:
                     continue
                 print(f"Preserving /{ver}/ …")
                 wget_tree(f"{SITE_URL}/{ver}/", SITE)
@@ -165,19 +193,22 @@ def main() -> int:
         clear_root(SITE)
         copy_build(SITE)
     else:
-        target = SITE / DOCS_VERSION
-        if target.exists():
-            shutil.rmtree(target)
-        copy_build(target)
+        copy_build(SITE / DOCS_VERSION)
+        (SITE / DOCS_VERSION / ".nojekyll").touch()
         if not (SITE / "index.html").is_file():
             copy_build(SITE)
 
-    # Local bootstrapped snapshots win over preserved remote copies.
     merge_local_snapshots()
 
-    versions_path = write_versions_json(SITE)
+    for ver in list_version_dirs(SITE):
+        assert_version_assets(SITE / ver)
+
+    if DOCS_VERSION == "latest":
+        assert_version_assets(SITE)
+
+    write_versions_json(SITE)
     (SITE / ".nojekyll").touch()
-    print(f"Site assembled at {SITE} (versions: {versions_path})")
+    print(f"Site assembled at {SITE}")
     return 0
 
 

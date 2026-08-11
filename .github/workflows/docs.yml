@@ -67,10 +67,8 @@ jobs:
           cd docs
           make html
 
-      - name: Bootstrap missing version snapshots
+      - name: Rebuild version snapshots
         if: github.event_name != 'pull_request' && steps.ver.outputs.version == 'latest'
-        env:
-          SITE_URL: https://snapboost.qiancapital.com
         run: |
           python3 <<'PY'
           import json
@@ -78,13 +76,10 @@ jobs:
           import re
           import shutil
           import subprocess
-          import urllib.error
-          import urllib.request
           from pathlib import Path
 
           workspace = Path(os.environ["GITHUB_WORKSPACE"])
           versions_path = workspace / "docs" / "versions.json"
-          site_url = os.environ["SITE_URL"].rstrip("/")
           version_re = re.compile(r"^v\d+\.\d+\.\d+$")
 
           wanted = []
@@ -96,22 +91,7 @@ jobs:
                   if isinstance(e, dict) and version_re.fullmatch(str(e.get("version", "")))
               ]
 
-          live = set()
-          try:
-              with urllib.request.urlopen(site_url + "/versions.json", timeout=30) as resp:
-                  payload = json.loads(resp.read().decode("utf-8"))
-              live = {
-                  e["version"]
-                  for e in payload
-                  if isinstance(e, dict) and version_re.fullmatch(str(e.get("version", "")))
-              }
-          except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError) as exc:
-              print(f"No live versions.json yet ({exc}); will bootstrap all listed snapshots.")
-
-          missing = [v for v in wanted if v not in live]
-          print("Wanted snapshots:", wanted)
-          print("Live snapshots:", sorted(live))
-          print("Missing snapshots:", missing)
+          print("Rebuilding snapshots from versions.json:", wanted)
 
           docs = workspace / "docs"
           snapshots = docs / "_build" / "snapshots"
@@ -119,7 +99,7 @@ jobs:
               shutil.rmtree(snapshots)
           snapshots.mkdir(parents=True)
 
-          for ver in missing:
+          for ver in wanted:
               print(f"Building snapshot {ver} …")
               html = docs / "_build" / "html"
               if html.exists():
@@ -129,9 +109,16 @@ jobs:
               subprocess.check_call(["make", "html"], cwd=docs, env=env)
               dest = snapshots / ver
               shutil.copytree(html, dest)
+              required = [
+                  dest / "_static" / "css" / "theme.css",
+                  dest / "_static" / "css" / "qiancapital.css",
+                  dest / "_static" / "js" / "theme.js",
+              ]
+              missing = [str(p.relative_to(dest)) for p in required if not p.is_file()]
+              if missing:
+                  raise SystemExit(f"{ver} build missing assets: {missing}")
               print(f"Stored snapshot at {dest}")
 
-          # Restore latest build for assemble root.
           print("Rebuilding latest for site root …")
           html = docs / "_build" / "html"
           if html.exists():
@@ -147,6 +134,25 @@ jobs:
           DOCS_VERSION: ${{ steps.ver.outputs.version }}
           SITE_URL: https://snapboost.qiancapital.com
         run: python3 docs/_scripts/assemble_site.py
+
+      - name: Verify versioned CSS is present
+        if: github.event_name != 'pull_request'
+        run: |
+          test -f site/_static/css/theme.css
+          if [[ -f docs/versions.json ]]; then
+            python3 - <<'PY'
+          import json, pathlib, sys
+          versions = json.loads(pathlib.Path("docs/versions.json").read_text())
+          for entry in versions:
+              ver = entry["version"]
+              if not ver.startswith("v"):
+                  continue
+              css = pathlib.Path("site") / ver / "_static" / "css" / "theme.css"
+              if not css.is_file():
+                  raise SystemExit(f"missing {css}")
+              print(f"ok {css} ({css.stat().st_size} bytes)")
+          PY
+          fi
 
       - name: Upload artifact
         if: github.event_name != 'pull_request'

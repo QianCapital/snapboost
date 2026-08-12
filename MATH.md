@@ -81,10 +81,10 @@ f_m\in\arg\min_{f\in\mathcal H_{k_m}}
 \sum_{i=1}^{n}w_i h_i
 \left(r_i-f(x_i)\right)^2,
 \qquad r_i=-\frac{g_i}{h_i}.
-\tag{1}
 $$
 
-The factor $1/2$ has no effect on the minimizer. Equation (1) is the central
+The factor $1/2$ has no effect on the minimizer. This weighted least-squares
+problem is the central
 computation in SnapBoost: the Hessian supplies both the Newton denominator and
 the sample weights used to fit the base regressor. The code uses
 `newton_target = -g / h` and `fit_weight = h * sample_weight`.
@@ -99,7 +99,6 @@ After fitting $f_m$, SnapBoost updates
 
 $$
 F_m(x)=F_{m-1}(x)+\eta_m f_m(x).
-\tag{2}
 $$
 
 By default $\eta_m=\eta$, the configured `learning_rate`. With
@@ -208,8 +207,12 @@ $$
 It is not twice differentiable. This implementation uses
 
 $$
-g=\begin{cases}1-\tau,&F\geq y,\\-\tau,&F<y,\end{cases}
-\qquad h=1
+g=1-\tau, \qquad F\geq y,
+$$
+
+$$
+g=-\tau, \qquad F<y,
+\qquad h=1.
 $$
 
 as a unit-Hessian working approximation. Thus this option uses the same
@@ -237,7 +240,6 @@ $$
 P(k_m=\mathrm{kernel\ candidate}\ j)=\frac{p_K}{D_K},
 \qquad
 P(k_m=\mathrm{linear})=p_L.
-\tag{3}
 $$
 
 The default parameters have $p_T=0.9$, $p_L=0$, depths 2 through 4, and one
@@ -252,11 +254,10 @@ the same Newton problem and SnapBoost selects
 $$
 (k_m,\eta_m)\in\arg\min_{k,\eta_k}
 \sum_iw_i\ell\left(y_i,F_{m-1}(x_i)+\eta_k f_{m,k}(x_i)\right).
-\tag{4}
 $$
 
 The configured probabilities then determine candidate eligibility, but do not
-otherwise weight the choice in (4).
+otherwise weight the greedy loss comparison.
 
 When `subsample=s<1`, the learner fit uses a reproducible sample without
 replacement of size $\lceil sn_+\rceil$, where $n_+$ counts observations with
@@ -274,7 +275,8 @@ $$
 f(x)=\sum_{j=1}^{J}c_j\mathbf{1}_{\{x\in R_j\}}.
 $$
 
-For a fixed partition, equation (1) gives the unregularized weighted leaf value
+For a fixed partition, the Newton weighted least-squares problem gives the
+unregularized weighted leaf value
 
 $$
 c_j=
@@ -282,7 +284,6 @@ c_j=
      {\sum_{i:x_i\in R_j}w_i h_i}
 =-\frac{\sum_{i:x_i\in R_j}w_i g_i}
         {\sum_{i:x_i\in R_j}w_i h_i}.
-\tag{5}
 $$
 
 SnapBoost delegates partition construction to scikit-learn's
@@ -312,12 +313,11 @@ $$
 \phi_j(x)=\sqrt{\frac2D}\cos(\omega_j^\top x+b_j),
 \qquad
 \phi(x)^\top\phi(x')\approx k_{\mathrm{RBF}}(x,x').
-\tag{6}
 $$
 
-By default, features are standardized before (6), which is important because
-kernel distances depend on feature scale. A fresh reproducible random basis is
-derived for every boosting round.
+By default, features are standardized before applying the random Fourier map,
+which is important because kernel distances depend on feature scale. A fresh
+reproducible random basis is derived for every boosting round.
 
 Let $\Phi_{ij}=\phi_j(x_i)$, $W=\mathrm{diag}(w_i h_i)$, and
 $r=(r_1,\ldots,r_n)^\top$. The RFF ridge coefficients solve
@@ -331,7 +331,6 @@ with normal-equation solution
 
 $$
 \hat\beta=(\Phi^\top W\Phi+\alpha I)^{-1}\Phi^\top Wr.
-\tag{7}
 $$
 
 The fitted correction is $f(x)=\phi(x)^\top\hat\beta$ (with the intercept
@@ -355,7 +354,7 @@ $$
 \omega_{qj}\sim\mathrm{Cauchy}(0,\gamma)
 $$
 
-and uses the same cosine map as (6).
+and uses the same cosine map as the RBF approximation above.
 
 ### 5.4 Raw-feature linear ridge
 
@@ -392,11 +391,11 @@ as follows:
 2. For $m=1,\ldots,M$:
    1. Evaluate $g_i$ and $h_i$ at $F_{m-1}(x_i)$.
    2. Form $r_i=-g_i/h_i$ and $\tilde w_i=w_i h_i$.
-   3. Sample one learner class using (3), or fit all eligible classes and use
-      (4).
+   3. Sample one learner class from the configured probability distribution,
+      or fit all eligible classes and compare their updated losses.
    4. Fit the chosen regressor to $(x_i,r_i)$ with weights $\tilde w_i$.
    5. Set $\eta_m=\eta$, or select it from the line-search grid.
-   6. Update the raw prediction using (2).
+   6. Add the scaled learner to the raw prediction.
 3. If validation early stopping is enabled, retain the ensemble size having
    the best validation loss according to `min_delta` and patience.
 
@@ -493,7 +492,6 @@ $$
 +\frac{G_R^2}{H_R+\lambda}
 -\frac{(G_L+G_R)^2}{H_L+H_R+\lambda}
 \right]-\gamma_T.
-\tag{8}
 $$
 
 SnapBoost and XGBoost are therefore closely related at the surrogate level but
@@ -504,7 +502,7 @@ differ in how they minimize it:
 | Per-round approximation | Newton working response, Hessian-weighted least squares | Direct second-order objective in gradient/Hessian statistics |
 | Learner class | Heterogeneous pool: trees, RFF ridge, optional linear ridge | Trees in standard `gbtree` mode; linear booster is a separate booster choice |
 | Choice per round | Random class sampling by default; optional greedy comparison | Greedy/approximate tree construction and split selection |
-| Tree leaf values | Produced by weighted regression-tree fitting, equivalent to (5) for a fixed partition | Regularized value $-G_j/(H_j+\lambda)$ |
+| Tree leaf values | Produced by weighted regression-tree fitting using the unregularized weighted leaf mean | Regularized value $-G_j/(H_j+\lambda)$ |
 | Structural regularization | Depth, minimum leaf size, feature sampling, optional monotonicity | Depth/leaves, minimum child weight, split penalty $\gamma_T$, L1/L2 leaf penalties, and more |
 | Smooth nonlinear component | Explicit RFF or exact kernel-ridge learner | Not part of the standard tree booster |
 | Step size | Fixed shrinkage or small discrete loss search | Usually global learning-rate shrinkage after tree optimization |
@@ -540,8 +538,8 @@ SnapBoost has several interacting forms of regularization:
   individual-round cost.
 - **Early stopping:** validation loss selects the effective ensemble length.
 
-RFF approximation is unbiased in the sense that, for the sampling scheme in
-(6),
+RFF approximation is unbiased under the random-frequency and random-phase
+sampling scheme described above:
 
 $$
 \mathbb{E}[\phi(x)^\top\phi(x')]=k(x,x'),
@@ -553,8 +551,9 @@ finite-dimensional kernel approximations rather than relying on one fixed map.
 
 ## 10. What is specific to this implementation
 
-The mathematical core is equation (1), but several details are worth keeping
-separate from a generic description of the SnapBoost paper:
+The mathematical core is the Hessian-weighted Newton regression problem, but
+several details are worth keeping separate from a generic description of the
+SnapBoost paper:
 
 - The default non-tree learner is scikit-learn ridge over random Fourier
   features, not an exact kernel solve.

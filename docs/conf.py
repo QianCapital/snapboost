@@ -49,7 +49,7 @@ source_suffix = {
 }
 
 templates_path = ["_templates"]
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "archive"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "archive", "README.md"]
 
 html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]

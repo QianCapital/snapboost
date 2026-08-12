@@ -16,6 +16,7 @@ This package is a Python/scikit-learn reimplementation inspired by [SnapBoost: A
 
 - [Documentation](#documentation)
 - [Features](#features)
+- [Mathematical Overview](#mathematical-overview)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Examples & Results](#examples--results)
@@ -55,6 +56,88 @@ Documentation is published at https://snapboost.qiancapital.com/ (GitHub Pages).
 | `regression` | Continuous targets with mean squared error loss |
 | `scikit-learn` | Implements the scikit-learn estimator API (`fit`, `predict`, `score`, …) |
 | `randomized-ensemble` | Stochastic base-learner selection per iteration |
+
+---
+
+## Mathematical Overview
+
+SnapBoost builds an additive predictor from heterogeneous learners:
+
+$$
+F_M(x)=F_0+\sum_{m=1}^{M}\eta_m f_m(x),
+$$
+
+where $F_0$ is a constant initial prediction, $f_m$ is a decision tree,
+random-Fourier-feature (RFF) ridge model, or optional linear ridge model, and
+$\eta_m$ is the learning rate (or a per-round step selected by line search).
+
+At round $m$, let $F_{m-1}(x_i)$ be the current raw prediction and let
+$\ell(y_i,F)$ be the objective. SnapBoost computes
+
+$$
+g_i=\left.\frac{\partial\ell(y_i,F)}{\partial F}\right|_{F=F_{m-1}(x_i)},
+\qquad
+h_i=\left.\frac{\partial^2\ell(y_i,F)}{\partial F^2}\right|_{F=F_{m-1}(x_i)}.
+$$
+
+A second-order Taylor expansion turns the next functional step into weighted
+least squares. The selected learner is therefore fit to the Newton working
+response
+
+$$
+r_i=-\frac{g_i}{h_i},
+\qquad
+f_m\approx\arg\min_{f\in\mathcal H_{k_m}}
+\sum_{i=1}^{n} w_i h_i\bigl(r_i-f(x_i)\bigr)^2,
+$$
+
+where $w_i$ is the observation weight. With the default random strategy, the
+learner family $k_m$ is sampled from the configured pool: tree depths share
+probability `p_tree`, the optional linear learner has probability `p_linear`,
+and RFF kernel candidates share the remainder. The update is
+
+$$
+F_m(x)=F_{m-1}(x)+\eta_m f_m(x).
+$$
+
+For squared-error regression, $g_i=2(F-y_i)$ and $h_i=2$, so $r_i=y_i-F$:
+ordinary residual boosting is recovered. For binary classification SnapBoost
+encodes labels as $y_i\in\{-1,+1\}$ and uses logistic loss,
+
+$$
+\ell(y,F)=\log(1+e^{-yF}),\quad
+g=-y\,\sigma(-yF),\quad
+h=\sigma(yF)\sigma(-yF),
+$$
+
+with class probability $P(y=+1\mid x)=\sigma(F_M(x))$.
+
+The smooth branch approximates a stationary kernel with random features. For
+the default RBF kernel $k(x,x')=\exp(-\gamma\lVert x-x'\rVert_2^2)$,
+
+$$
+\phi_j(x)=\sqrt{\frac{2}{D}}\cos(\omega_j^\top x+b_j),
+\quad \omega_j\sim\mathcal N(0,2\gamma I),
+\quad b_j\sim\operatorname{Unif}(0,2\pi),
+$$
+
+and weighted ridge regression solves
+
+$$
+\hat\beta=\arg\min_\beta
+\sum_i w_i h_i\bigl(r_i-\phi(x_i)^\top\beta\bigr)^2
++\alpha\lVert\beta\rVert_2^2.
+$$
+
+Thus, trees model local axis-aligned interactions while RFF ridge learners add
+smooth global corrections. XGBoost applies a related second-order expansion
+but restricts every round to a regularized tree and optimizes leaf weights and
+split gains analytically; SnapBoost instead projects the Newton step onto a
+randomly selected (or greedily selected) heterogeneous hypothesis class.
+
+See [MATH.md](MATH.md) for the full derivation, initialization and objective
+formulas, RFF and tree subproblems, optional training behavior, and a detailed
+comparison with gradient boosting, Newton tree boosting, and XGBoost.
 
 ---
 

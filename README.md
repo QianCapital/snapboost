@@ -118,7 +118,7 @@ the default RBF kernel $k(x,x')=\exp(-\gamma\lVert x-x'\rVert_2^2)$,
 $$
 \phi_j(x)=\sqrt{\frac{2}{D}}\cos(\omega_j^\top x+b_j),
 \quad \omega_j\sim\mathcal N(0,2\gamma I),
-\quad b_j\sim\operatorname{Unif}(0,2\pi),
+\quad b_j\sim\mathrm{Uniform}(0,2\pi),
 $$
 
 and weighted ridge regression solves

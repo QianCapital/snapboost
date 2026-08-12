@@ -162,7 +162,7 @@ The Hessian becomes small for confidently classified observations, reducing
 their weighted influence. If
 
 $$
-\hat p=\frac{\sum_iw_i\mathbf1[y_i=+1]}{\sum_iw_i},
+\hat p=\frac{\sum_iw_i\mathbf{1}_{\{y_i=+1\}}}{\sum_iw_i},
 $$
 
 the initial score is the clipped empirical log-odds
@@ -230,13 +230,13 @@ candidates and $D_K$ kernel-type/bandwidth pairs, the default random strategy
 uses
 
 $$
-P(k_m=\text{tree depth }d)=\frac{p_T}{D_T},
+P(k_m=\mathrm{tree\ depth}\ d)=\frac{p_T}{D_T},
 $$
 
 $$
-P(k_m=\text{kernel candidate }j)=\frac{p_K}{D_K},
+P(k_m=\mathrm{kernel\ candidate}\ j)=\frac{p_K}{D_K},
 \qquad
-P(k_m=\text{linear})=p_L.
+P(k_m=\mathrm{linear})=p_L.
 \tag{3}
 $$
 
@@ -271,7 +271,7 @@ A regression tree partitions feature space into leaves
 $R_1,\ldots,R_J$ and predicts
 
 $$
-f(x)=\sum_{j=1}^{J}c_j\mathbf1[x\in R_j].
+f(x)=\sum_{j=1}^{J}c_j\mathbf{1}_{\{x\in R_j\}}.
 $$
 
 For a fixed partition, equation (1) gives the unregularized weighted leaf value
@@ -303,7 +303,7 @@ expectation over Fourier bases. Drawing
 
 $$
 \omega_j\sim\mathcal N(0,2\gamma I),
-\qquad b_j\sim\operatorname{Unif}(0,2\pi),
+\qquad b_j\sim\mathrm{Uniform}(0,2\pi),
 $$
 
 defines the $D$-dimensional map
@@ -319,7 +319,7 @@ By default, features are standardized before (6), which is important because
 kernel distances depend on feature scale. A fresh reproducible random basis is
 derived for every boosting round.
 
-Let $\Phi_{ij}=\phi_j(x_i)$, $W=\operatorname{diag}(w_i h_i)$, and
+Let $\Phi_{ij}=\phi_j(x_i)$, $W=\mathrm{diag}(w_i h_i)$, and
 $r=(r_1,\ldots,r_n)^\top$. The RFF ridge coefficients solve
 
 $$
@@ -352,7 +352,7 @@ Its spectral distribution factorizes into Cauchy variables, so the
 implementation samples each coordinate of $\omega_j$ independently as
 
 $$
-\omega_{qj}\sim\operatorname{Cauchy}(0,\gamma)
+\omega_{qj}\sim\mathrm{Cauchy}(0,\gamma)
 $$
 
 and uses the same cosine map as (6).
@@ -488,7 +488,7 @@ For left and right child statistics $(G_L,H_L)$ and $(G_R,H_R)$, XGBoost's
 canonical split gain is
 
 $$
-\operatorname{Gain}=\frac12\left[
+\mathrm{Gain}=\frac12\left[
 \frac{G_L^2}{H_L+\lambda}
 +\frac{G_R^2}{H_R+\lambda}
 -\frac{(G_L+G_R)^2}{H_L+H_R+\lambda}
@@ -544,7 +544,7 @@ RFF approximation is unbiased in the sense that, for the sampling scheme in
 (6),
 
 $$
-\mathbb E[\phi(x)^\top\phi(x')]=k(x,x'),
+\mathbb{E}[\phi(x)^\top\phi(x')]=k(x,x'),
 $$
 
 while its finite-$D$ variance decreases as the number of random features grows.

@@ -59,7 +59,7 @@ Documentation is published at https://snapboost.qiancapital.com/ (GitHub Pages).
 
 ---
 
-## Mathematical Overview
+## Heterogeneous Gradient Boosting
 
 SnapBoost builds an additive predictor from heterogeneous learners:
 

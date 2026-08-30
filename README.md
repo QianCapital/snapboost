@@ -467,8 +467,10 @@ classes retain their existing constructor surface for compatibility.
 
 After fitting, `base_score_` is the optimized constant prediction,
 `learner_weights_` stores per-round contributions, `history_` contains training
-and optional validation loss, and `best_iteration_` identifies the final
-restored iteration.
+and optional validation loss, and `best_iteration_` identifies the round with
+the lowest validation loss. That ensemble is restored only when
+`early_stopping_rounds` triggers; with an `eval_set` alone `best_iteration_` is
+informational and predictions still use all `n_iter_` learners.
 
 **Label conventions (classification)**: accepts any two distinct class labels. Predictions use the original labels, and probability columns follow `classes_` order.
 

@@ -35,7 +35,12 @@ def fetch_json(url: str):
     try:
         with urllib.request.urlopen(url, timeout=30) as resp:
             return json.loads(resp.read().decode("utf-8"))
-    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError) as exc:
+    except (
+        urllib.error.URLError,
+        urllib.error.HTTPError,
+        TimeoutError,
+        json.JSONDecodeError,
+    ) as exc:
         print(f"Could not fetch {url}: {exc}")
         return None
 
@@ -96,7 +101,9 @@ def write_versions_json(site: Path) -> Path:
     versions = [{"version": "latest", "url": "/"}]
     for name in list_version_dirs(site):
         versions.append({"version": name, "url": f"/{name}/"})
-    if DOCS_VERSION != "latest" and not any(v["version"] == DOCS_VERSION for v in versions):
+    if DOCS_VERSION != "latest" and not any(
+        v["version"] == DOCS_VERSION for v in versions
+    ):
         versions.append({"version": DOCS_VERSION, "url": f"/{DOCS_VERSION}/"})
         versions[1:] = sorted(
             versions[1:],

@@ -1,3 +1,3 @@
 # Convenience requirements for local development.
 # Runtime and optional dependency constraints are defined in pyproject.toml.
--e .[examples,test]
+-e .[examples,dev]

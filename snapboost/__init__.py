@@ -1,14 +1,15 @@
 from hnbm import HNBM
-from .rff_learner import LaplacianSampler, RandomFourierRidgeRegressor
-from .preprocessing import make_tabular_preprocessor
+
 from .linear_learner import WeightedLinearRegressor
+from .preprocessing import make_tabular_preprocessor
+from .rff_learner import LaplacianSampler, RandomFourierRidgeRegressor
 from .snapboost import (
     SnapBoost,
+    SnapBoost_KernelRidge,
     SnapBoostClassifier,
     SnapBoostKernelRidgeClassifier,
     SnapBoostKernelRidgeRegressor,
     SnapBoostRegressor,
-    SnapBoost_KernelRidge,
 )
 
 __all__ = [
@@ -25,4 +26,4 @@ __all__ = [
     "SnapBoost_KernelRidge",
 ]
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"

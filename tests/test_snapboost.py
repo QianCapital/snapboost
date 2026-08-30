@@ -1,5 +1,5 @@
-import pickle
 import inspect
+import pickle
 
 import numpy as np
 import pytest
@@ -10,13 +10,13 @@ from sklearn.tree import DecisionTreeRegressor
 
 from snapboost import (
     RandomFourierRidgeRegressor,
-    WeightedLinearRegressor,
     SnapBoost,
+    SnapBoost_KernelRidge,
     SnapBoostClassifier,
     SnapBoostKernelRidgeClassifier,
     SnapBoostKernelRidgeRegressor,
     SnapBoostRegressor,
-    SnapBoost_KernelRidge,
+    WeightedLinearRegressor,
     __version__,
 )
 
@@ -241,7 +241,7 @@ def test_task_specific_kernel_ridge_estimators_fit(estimator_class, checker):
 
 
 def test_package_exposes_version():
-    assert __version__ == "0.2.0"
+    assert __version__ == "0.2.1"
 
 
 def test_advanced_regressor_supports_greedy_selection_and_line_search():
@@ -384,3 +384,47 @@ def test_snapboost_forwards_objective_metrics_callbacks_and_parallelism():
     assert model.n_iter_ == 2
     assert callback_iterations == [0, 1]
     assert len(model.history_["training_metric"]) == 2
+
+
+@pytest.mark.parametrize(
+    "p_tree, p_linear",
+    [(0.7, 0.3), (0.9, 0.1), (0.8, 0.2), (0.6, 0.4), (0.5, 0.5), (0.1, 0.9)],
+)
+def test_exhausted_probability_budget_excludes_kernel_learners(p_tree, p_linear):
+    """Rounding in ``1 - p_tree - p_linear`` must not smuggle in an RFF learner."""
+    model = SnapBoostRegressor(p_tree=p_tree, p_linear=p_linear)
+    model._build_base_learners()
+
+    assert not any(
+        isinstance(learner, RandomFourierRidgeRegressor)
+        for learner in model.base_learners_
+    )
+    assert all(probability > 1e-12 for probability in model.probabilities_)
+    assert sum(model.probabilities_) == pytest.approx(1.0)
+
+
+def test_greedy_selection_ignores_excluded_kernel_family():
+    X, y = make_regression(n_samples=60, n_features=4, random_state=3)
+    model = SnapBoostRegressor(
+        p_tree=0.7,
+        p_linear=0.3,
+        selection_strategy="greedy",
+        num_iterations=5,
+        random_state=3,
+    ).fit(X, y)
+
+    assert not any(
+        isinstance(learner, RandomFourierRidgeRegressor)
+        for learner in model.ensemble_
+    )
+
+
+def test_dataframe_column_order_is_validated():
+    pd = pytest.importorskip("pandas")
+    X, y = make_regression(n_samples=60, n_features=4, random_state=5)
+    frame = pd.DataFrame(X, columns=["a", "b", "c", "d"])
+    model = SnapBoostRegressor(num_iterations=5, random_state=5).fit(frame, y)
+
+    assert list(model.feature_names_in_) == ["a", "b", "c", "d"]
+    with pytest.raises(ValueError, match="feature names"):
+        model.predict(frame[["d", "c", "b", "a"]])

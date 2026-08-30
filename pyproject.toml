@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "snapboost"
-version = "0.2.0"
+version = "0.2.1"
 description = "SnapBoost heterogeneous Newton boosting with decision trees and RFF ridge regressors"
 readme = "README.md"
 license = "MIT"
@@ -13,7 +13,7 @@ requires-python = ">=3.9"
 authors = [{name = "Qian Capital", email = "samson.qian@qiancapital.com"}]
 keywords = ["boosting", "gradient-boosting", "snapboost", "heterogeneous-newton"]
 dependencies = [
-    "hnbm>=0.3.0",
+    "hnbm>=0.3.1",
     "numpy>=1.20",
     "scikit-learn>=1.0",
     "tqdm>=4.50",
@@ -28,7 +28,14 @@ examples = [
     "xgboost>=1.5",
     "lightgbm>=3.3",
 ]
-test = ["pytest>=7"]
+test = ["pytest>=7", "pytest-cov>=4", "pandas>=1.3"]
+dev = [
+    "pytest>=7",
+    "pytest-cov>=4",
+    "pandas>=1.3",
+    "ruff>=0.6",
+    "mypy>=1.11",
+]
 
 [project.urls]
 Homepage = "https://github.com/qiancapital/snapboost"
@@ -38,3 +45,32 @@ Repository = "https://github.com/qiancapital/snapboost"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["snapboost*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--strict-markers"
+
+[tool.coverage.run]
+source = ["snapboost"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+# Ratchet: raise this as coverage improves, never lower it.
+fail_under = 85
+
+[tool.ruff]
+line-length = 88
+target-version = "py39"
+extend-exclude = ["docs/_build", "docs/archive", "static"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+files = ["snapboost"]
+ignore_missing_imports = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+no_implicit_optional = true

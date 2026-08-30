@@ -50,8 +50,10 @@ reg.fit(X, y)
 ```
 
 Fitted adaptive models expose `base_score_`, `learner_weights_`, `history_`,
-`best_iteration_`, and `n_iter_`. Early stopping restores the best validation
-ensemble before `fit` returns.
+`best_iteration_`, and `n_iter_`. When `early_stopping_rounds` triggers, the
+best validation ensemble is restored before `fit` returns. Passing an
+`eval_set` without `early_stopping_rounds` still records `best_iteration_`, but
+no learners are discarded, so predictions use all `n_iter_` of them.
 
 Models also inherit `compact(min_abs_weight=0.0, inplace=False)` from HNBM.
 Compaction is explicit and never runs automatically.

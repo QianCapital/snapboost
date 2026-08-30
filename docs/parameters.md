@@ -11,7 +11,7 @@ are exposed by the recommended `SnapBoostClassifier` and
 | `num_iterations` | `int` | `100` | Number of boosting rounds |
 | `learning_rate` | `float` | `0.1` | Shrinkage applied to each learner's contribution |
 | `random_state` | `int` or `None` | `None` | Seed for learner selection and tree fitting |
-| `verbose` | `bool` | `True` | Show a tqdm progress bar during training |
+| `verbose` | `bool` | `False` | Show a tqdm progress bar during training |
 | `selection_strategy` | `{"random", "greedy"}` | `"random"` | Sample one learner or select the lowest-loss candidate |
 | `line_search` | `bool` | `False` | Select a contribution weight per boosting round |
 | `subsample` | `float` | `1.0` | Fraction of rows used to fit each learner |
@@ -21,6 +21,8 @@ are exposed by the recommended `SnapBoostClassifier` and
 | `objective_parameter` | `float` or `None` | `None` | Pseudo-Huber delta or quantile level |
 
 The legacy `SnapBoost` class also accepts `mode` (`"classification"` or `"regression"`).
+The legacy `SnapBoost_KernelRidge` class is the one exception to the table above:
+it defaults to `verbose=True`.
 
 ## SnapBoost-specific
 

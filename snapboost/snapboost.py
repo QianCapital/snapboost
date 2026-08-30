@@ -1,14 +1,19 @@
-from numbers import Integral, Real
-from collections.abc import Sequence
 import inspect
+from collections.abc import Sequence
+from numbers import Integral, Real
 
 import numpy as np
-
-from sklearn.tree import DecisionTreeRegressor
-from sklearn.kernel_ridge import KernelRidge
 from hnbm import HNBM, HNBMClassifier, HNBMRegressor
-from .rff_learner import RandomFourierRidgeRegressor
+from sklearn.kernel_ridge import KernelRidge
+from sklearn.tree import DecisionTreeRegressor
+
 from .linear_learner import WeightedLinearRegressor
+from .rff_learner import RandomFourierRidgeRegressor
+
+# ``1 - p_tree - p_linear`` can leave a rounding residue near 1e-17 even when the
+# two probabilities already sum to one. Anything below this counts as an empty
+# family, so greedy selection never evaluates a learner the caller excluded.
+_MIN_FAMILY_PROBABILITY = 1e-12
 
 
 class _SnapBoostMixin:
@@ -121,15 +126,14 @@ class _SnapBoostMixin:
             or gamma <= 0
         ):
             raise ValueError(f"gamma must be a finite number > 0, got {gamma}.")
-        if n_components is not None:
-            if (
-                isinstance(n_components, (bool, np.bool_))
-                or not isinstance(n_components, Integral)
-                or n_components < 1
-            ):
-                raise ValueError(
-                    f"n_components must be an integer >= 1, got {n_components}."
-                )
+        if n_components is not None and (
+            isinstance(n_components, (bool, np.bool_))
+            or not isinstance(n_components, Integral)
+            or n_components < 1
+        ):
+            raise ValueError(
+                f"n_components must be an integer >= 1, got {n_components}."
+            )
         if (
             isinstance(min_samples_leaf, (bool, np.bool_))
             or not isinstance(min_samples_leaf, Integral)
@@ -181,7 +185,10 @@ class _SnapBoostMixin:
                 for value in kernel_gammas
             )
         ):
-            raise ValueError("kernel_gammas must be a nonempty sequence of positive numbers or None.")
+            raise ValueError(
+                "kernel_gammas must be a nonempty sequence of positive numbers "
+                "or None."
+            )
         if (
             isinstance(kernel_types, (str, bytes))
             or not isinstance(kernel_types, (Sequence, np.ndarray))
@@ -230,7 +237,9 @@ class _SnapBoostMixin:
         self.probabilities_ = []
 
         depth_range = range(self.min_max_depth, 1 + self.max_max_depth)
-        gammas = (self.gamma,) if self.kernel_gammas is None else tuple(self.kernel_gammas)
+        gammas = (
+            (self.gamma,) if self.kernel_gammas is None else tuple(self.kernel_gammas)
+        )
         kernel_specs = [
             (kernel, gamma) for kernel in self.kernel_types for gamma in gammas
         ]
@@ -262,7 +271,7 @@ class _SnapBoostMixin:
                 self.probabilities_.append(self.p_tree / len(depth_range))
 
         kernel_probability = 1.0 - self.p_tree - self.p_linear
-        if kernel_probability > 0.0:
+        if kernel_probability > _MIN_FAMILY_PROBABILITY:
             non_tree_probability = kernel_probability / len(kernel_specs)
             kernel_seeds = seeds[len(depth_range):]
             for (kernel, gamma), seed in zip(kernel_specs, kernel_seeds):

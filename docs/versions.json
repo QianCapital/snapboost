@@ -1,5 +1,6 @@
 [
   {"version": "latest", "url": "/"},
+  {"version": "v0.2.1", "url": "/v0.2.1/"},
   {"version": "v0.2.0", "url": "/v0.2.0/"},
   {"version": "v0.1.7", "url": "/v0.1.7/"}
 ]

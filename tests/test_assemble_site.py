@@ -1,9 +1,8 @@
 """Tests for resilient versioned documentation assembly."""
 
 import importlib.util
-from pathlib import Path
 import urllib.error
-
+from pathlib import Path
 
 SCRIPT = Path(__file__).parents[1] / "docs" / "_scripts" / "assemble_site.py"
 

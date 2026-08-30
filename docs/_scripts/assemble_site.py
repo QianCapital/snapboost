@@ -132,6 +132,16 @@ def copy_build(dest: Path) -> None:
     shutil.copytree(BUILD, dest)
 
 
+def copy_build_into_root() -> None:
+    """Install the fresh build at the site root, keeping ``/v*/`` trees intact.
+
+    ``copy_build`` removes its destination first, which would discard the
+    version directories preserved from the live site.
+    """
+    clear_root(SITE)
+    shutil.copytree(BUILD, SITE, dirs_exist_ok=True)
+
+
 def merge_local_snapshots() -> None:
     """Overlay locally built snapshots from docs/_build/snapshots/vX.Y.Z/."""
     if not SNAPSHOTS.is_dir():
@@ -146,12 +156,11 @@ def merge_local_snapshots() -> None:
             (dest / ".nojekyll").touch()
 
 
-def assert_version_assets(version_dir: Path) -> None:
+def assert_version_assets(version_dir: Path, label: str = "") -> None:
     missing = [rel for rel in REQUIRED_STATIC if not (version_dir / rel).is_file()]
     if missing:
-        raise SystemExit(
-            f"Snapshot {version_dir.name} is missing required static assets: {missing}"
-        )
+        name = label or f"Snapshot {version_dir.name}"
+        raise SystemExit(f"{name} is missing required static assets: {missing}")
 
 
 def repair_version_assets(version_dir: Path) -> None:
@@ -187,6 +196,25 @@ def repair_version_assets(version_dir: Path) -> None:
                     f"{source.relative_to(WORKSPACE)}"
                 )
                 break
+
+
+def repair_root_assets() -> None:
+    """Backfill root assets the live-site mirror may have missed.
+
+    Tagged builds publish the fresh Sphinx output under ``/vX.Y.Z/`` and
+    mirror the root from the live site, where ``wget --page-requisites`` can
+    omit stylesheets. The local build always carries them.
+    """
+    for rel in REQUIRED_STATIC:
+        destination = SITE / rel
+        if destination.is_file():
+            continue
+        source = BUILD / rel
+        if not source.is_file():
+            continue
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+        print(f"Recovered /{rel} from {source.relative_to(WORKSPACE)}")
 
 
 def main() -> int:
@@ -232,13 +260,12 @@ def main() -> int:
         print("Live site unavailable; starting from empty site tree.")
 
     if DOCS_VERSION == "latest":
-        clear_root(SITE)
-        copy_build(SITE)
+        copy_build_into_root()
     else:
         copy_build(SITE / DOCS_VERSION)
         (SITE / DOCS_VERSION / ".nojekyll").touch()
         if not (SITE / "index.html").is_file():
-            copy_build(SITE)
+            copy_build_into_root()
 
     merge_local_snapshots()
 
@@ -246,8 +273,8 @@ def main() -> int:
         repair_version_assets(SITE / ver)
         assert_version_assets(SITE / ver)
 
-    if DOCS_VERSION == "latest":
-        assert_version_assets(SITE)
+    repair_root_assets()
+    assert_version_assets(SITE, "Site root")
 
     write_versions_json(SITE)
     (SITE / ".nojekyll").touch()

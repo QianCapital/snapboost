@@ -45,9 +45,27 @@ body,
   text-align: center;
 }
 
-.wy-side-nav-search > a.sb-title {
-  display: block;
+.wy-side-nav-search > a.sb-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
   margin: 0.15rem 0 0.65rem;
+  text-decoration: none;
+}
+
+.wy-side-nav-search .sb-logo {
+  display: block;
+  width: 92px;
+  height: auto;
+  border: none;
+  background: transparent;
+  padding: 0;
+  mix-blend-mode: lighten;
+}
+
+.wy-side-nav-search .sb-title {
+  display: block;
   color: var(--qc-light) !important;
   font-size: 1.55rem;
   font-weight: 700;
@@ -56,7 +74,7 @@ body,
   text-align: center;
 }
 
-.wy-side-nav-search > a.sb-title:hover {
+.wy-side-nav-search > a.sb-brand:hover .sb-title {
   color: var(--qc-gold-bright) !important;
 }
 
@@ -403,7 +421,9 @@ footer,
 }
 
 .rst-content img[src*="qian-capital"],
+.rst-content img[src*="q-logo"],
 .wy-side-nav-search img.logo,
+.wy-side-nav-search .sb-logo,
 .sb-sidebar-brand img {
   border: none;
   background: transparent;

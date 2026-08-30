@@ -2,7 +2,10 @@
 
 {%- block sidebartitle %}
   {%- set _root_doc = root_doc|default(master_doc) %}
-  <a class="sb-title" href="{{ pathto(_root_doc) }}">SnapBoost</a>
+  <a class="sb-brand" href="{{ pathto(_root_doc) }}">
+    <img class="sb-logo" src="{{ pathto('_static/img/q-logo.png', 1) }}" alt="" />
+    <span class="sb-title">SnapBoost</span>
+  </a>
 
   {% if versions %}
   <div class="sb-version-switch" role="navigation" aria-label="{{ _('Documentation version') }}">

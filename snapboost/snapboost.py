@@ -312,6 +312,12 @@ class _SnapBoostMixin:
     ):
         self._validate_snapboost_params()
         self._build_base_learners()
+        if sample_weight is not None:
+            weights = np.asarray(sample_weight, dtype=float)
+            if weights.ndim == 1 and weights.size and not np.any(weights):
+                raise ValueError(
+                    "sample_weight must contain at least one non-zero number."
+                )
         return super().fit(
             X,
             y,

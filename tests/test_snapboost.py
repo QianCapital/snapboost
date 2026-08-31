@@ -468,3 +468,11 @@ def test_legacy_snapboost_set_params_rebuilds_valid_pool():
     model.set_params(p_tree=0.5, min_max_depth=1, max_max_depth=1)
     assert model.probabilities_ == pytest.approx([0.5, 0.5])
 
+
+def test_all_zero_sample_weights_mention_zero_in_the_error():
+    X, y = make_regression(n_samples=30, n_features=3, random_state=4)
+    with pytest.raises(ValueError, match=r"(.*weight.*zero.*)|(.*zero.*weight.*)"):
+        SnapBoostRegressor(num_iterations=1, random_state=4).fit(
+            X, y, sample_weight=np.zeros(len(y))
+        )
+

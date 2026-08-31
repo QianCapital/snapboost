@@ -11,6 +11,7 @@ Release date: 2026-08-30
 - Freeze the exact-kernel estimators as a specialized surface without adaptive
   training controls.
 - Add sklearn `check_estimator` coverage for the recommended estimators.
+- Reject all-zero `sample_weight` with a sklearn-compatible error message.
 - Document limitations (binary classification, dense inputs, CART trees,
   pipeline-only missing values and categoricals).
 - Mark the package as typed (`py.typed`) and raise the coverage floor to 90%.

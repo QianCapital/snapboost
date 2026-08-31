@@ -29,3 +29,12 @@ def test_tabular_preprocessor_handles_missing_and_unseen_categories():
     probabilities = model.predict_proba(X_test)
     assert probabilities.shape == (1, 2)
     assert np.all(np.isfinite(probabilities))
+
+
+def test_tabular_preprocessor_can_scale_numeric_columns():
+    X = np.array([[1.0, 10.0], [np.nan, 20.0], [3.0, 30.0]])
+    transformer = make_tabular_preprocessor(scale_numeric=True)
+    transformed = transformer.fit_transform(X)
+    assert transformed.shape[0] == 3
+    assert np.all(np.isfinite(transformed))
+

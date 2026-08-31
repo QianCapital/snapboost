@@ -20,9 +20,11 @@ are exposed by the recommended `SnapBoostClassifier` and
 | `objective` | `str` | `"auto"` | Regression objective: squared error, pseudo-Huber, or quantile |
 | `objective_parameter` | `float` or `None` | `None` | Pseudo-Huber delta or quantile level |
 
-The legacy `SnapBoost` class also accepts `mode` (`"classification"` or `"regression"`).
-The legacy `SnapBoost_KernelRidge` class is the one exception to the table above:
-it defaults to `verbose=True`.
+The legacy `SnapBoost` class also accepts `mode` (`"classification"` or `"regression"`)
+and is deprecated in 1.0. The legacy `SnapBoost_KernelRidge` class is also
+deprecated; it is the one exception to the table above and defaults to
+`verbose=True`. Invalid constructor values are rejected at `fit`, not at
+construction.
 
 ## SnapBoost-specific
 

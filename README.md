@@ -42,7 +42,7 @@ cd docs && make html
 # open _build/html/index.html
 ```
 
-Documentation is published at https://snapboost.qiancapital.com/ (GitHub Pages). The live docs on `/` track `master` (**latest**). Release snapshots are under `/vX.Y.Z/` (for example `/v0.2.0/`). Use the version dropdown under **SnapBoost** in the sidebar to switch between them.
+Documentation is published at https://snapboost.qiancapital.com/ (GitHub Pages). The live docs on `/` track `master` (**latest**). Release snapshots are under `/vX.Y.Z/` (for example `/v1.0.0/`) and are rebuilt from `docs/versions.json` on each `master` deploy. Use the version dropdown under **SnapBoost** in the sidebar to switch between them.
 
 ---
 
@@ -157,7 +157,7 @@ cd snapboost
 pip install .
 ```
 
-**Requirements**: Python ≥ 3.9, NumPy, scikit-learn, tqdm, [`hnbm`](https://pypi.org/project/hnbm/) ≥ 0.3.0.
+**Requirements**: Python ≥ 3.9, NumPy, scikit-learn, tqdm, [`hnbm`](https://pypi.org/project/hnbm/) ≥ 1.0.0.
 
 ---
 
@@ -495,7 +495,7 @@ SnapBoost ready
 
 ## Development
 
-For normal development against the released HNBM dependency, install SnapBoost
+For normal development against the released HNBM 1.x dependency, install SnapBoost
 in editable mode and run the complete validation suite:
 
 ```bash

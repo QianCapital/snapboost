@@ -34,14 +34,16 @@ def test_clone_and_set_params_rebuild_learner_pool(estimator_class):
 
 @pytest.mark.parametrize("value", [0, -1, 1.5])
 def test_invalid_tree_depth_is_rejected(value):
+    X, y = make_regression(n_samples=20, n_features=3, random_state=0)
     with pytest.raises(ValueError, match="min_max_depth"):
-        SnapBoostRegressor(min_max_depth=value)
+        SnapBoostRegressor(min_max_depth=value).fit(X, y)
 
 
 @pytest.mark.parametrize("value", [0, -1, 1.5])
 def test_invalid_max_tree_depth_is_rejected(value):
+    X, y = make_regression(n_samples=20, n_features=3, random_state=0)
     with pytest.raises(ValueError, match="max_max_depth"):
-        SnapBoostRegressor(max_max_depth=value)
+        SnapBoostRegressor(max_max_depth=value).fit(X, y)
 
 
 def test_classifier_fits_and_predicts_probabilities():
@@ -108,20 +110,20 @@ def test_fit_forwards_sample_weight_and_eval_set():
     ],
 )
 def test_invalid_snapboost_parameters_are_rejected(parameter, value, message):
+    X, y = make_regression(n_samples=20, n_features=3, random_state=0)
     with pytest.raises(ValueError, match=message):
-        SnapBoostRegressor(**{parameter: value})
+        SnapBoostRegressor(**{parameter: value}).fit(X, y)
 
 
-def test_snapboost_set_params_is_transactional():
+def test_snapboost_set_params_stores_values_before_fit_validation():
     model = SnapBoostRegressor(min_max_depth=2, max_max_depth=4)
-    original_pool = model.base_learners_
+    result = model.set_params(min_max_depth=5)
 
+    assert result is model
+    assert model.min_max_depth == 5
+    X, y = make_regression(n_samples=20, n_features=3, random_state=0)
     with pytest.raises(ValueError, match="min_max_depth"):
-        model.set_params(min_max_depth=5)
-
-    assert model.min_max_depth == 2
-    assert model.max_max_depth == 4
-    assert model.base_learners_ is original_pool
+        model.fit(X, y)
 
 
 def test_unknown_set_param_does_not_partially_mutate_fitted_model():
@@ -141,9 +143,10 @@ def test_unknown_set_param_does_not_partially_mutate_fitted_model():
 
 
 @pytest.mark.parametrize("value", [-1, np.int64(-1)])
-def test_negative_random_state_is_rejected_early(value):
+def test_negative_random_state_is_rejected_at_fit(value):
+    X, y = make_regression(n_samples=20, n_features=3, random_state=0)
     with pytest.raises(ValueError, match="non-negative"):
-        SnapBoostRegressor(random_state=value)
+        SnapBoostRegressor(random_state=value).fit(X, y)
 
 
 def test_large_random_state_is_safely_derived_for_base_learners():
@@ -185,12 +188,14 @@ def test_legacy_snapboost_fits(mode):
     else:
         X, y = make_regression(n_samples=30, n_features=3, random_state=9)
 
-    model = SnapBoost(
-        num_iterations=2,
-        mode=mode,
-        random_state=9,
-        verbose=False,
-    ).fit(X, y)
+    with pytest.warns(FutureWarning, match="deprecated"):
+        model = SnapBoost(
+            num_iterations=2,
+            mode=mode,
+            random_state=9,
+            verbose=False,
+        )
+    model.fit(X, y)
 
     if mode == "classification":
         assert model.predict_proba(X).shape == (30, 2)
@@ -198,19 +203,19 @@ def test_legacy_snapboost_fits(mode):
         assert np.all(np.isfinite(model.predict(X)))
 
 
-def test_legacy_kernel_ridge_set_params_is_transactional():
-    model = SnapBoost_KernelRidge(verbose=False)
-    original_pool = model.base_learners_
-
+def test_legacy_kernel_ridge_set_params_stores_values_before_fit_validation():
+    with pytest.warns(FutureWarning, match="deprecated"):
+        model = SnapBoost_KernelRidge(verbose=False)
+    model.set_params(gamma=float("nan"))
+    assert np.isnan(model.gamma)
+    X, y = make_regression(n_samples=20, n_features=3, random_state=0)
     with pytest.raises(ValueError, match="finite"):
-        model.set_params(gamma=float("nan"))
-
-    assert model.gamma == 1.0
-    assert model.base_learners_ is original_pool
+        model.fit(X, y)
 
 
 def test_legacy_kernel_ridge_unknown_param_is_transactional():
-    model = SnapBoost_KernelRidge(verbose=False)
+    with pytest.warns(FutureWarning, match="deprecated"):
+        model = SnapBoost_KernelRidge(verbose=False)
 
     with pytest.raises(ValueError, match="does_not_exist"):
         model.set_params(p_tree=0.25, does_not_exist=True)
@@ -241,7 +246,7 @@ def test_task_specific_kernel_ridge_estimators_fit(estimator_class, checker):
 
 
 def test_package_exposes_version():
-    assert __version__ == "0.2.1"
+    assert __version__ == "1.0.0"
 
 
 def test_advanced_regressor_supports_greedy_selection_and_line_search():
@@ -355,8 +360,9 @@ def test_optional_linear_family_receives_explicit_probability():
 
 
 def test_tree_and_linear_probabilities_cannot_exceed_one():
+    X, y = make_regression(n_samples=20, n_features=3, random_state=0)
     with pytest.raises(ValueError, match="p_tree.*p_linear"):
-        SnapBoostRegressor(p_tree=0.8, p_linear=0.3)
+        SnapBoostRegressor(p_tree=0.8, p_linear=0.3).fit(X, y)
 
 
 def test_snapboost_forwards_objective_metrics_callbacks_and_parallelism():
@@ -428,3 +434,37 @@ def test_dataframe_column_order_is_validated():
     assert list(model.feature_names_in_) == ["a", "b", "c", "d"]
     with pytest.raises(ValueError, match="feature names"):
         model.predict(frame[["d", "c", "b", "a"]])
+
+
+def test_task_estimators_reject_mode_in_set_params():
+    with pytest.raises(ValueError, match="mode"):
+        SnapBoostClassifier().set_params(mode="regression")
+    with pytest.raises(ValueError, match="mode"):
+        SnapBoostRegressor().set_params(mode="classification")
+    with pytest.raises(ValueError, match="mode"):
+        SnapBoostKernelRidgeClassifier().set_params(mode="regression")
+    with pytest.raises(ValueError, match="mode"):
+        SnapBoostKernelRidgeRegressor().set_params(mode="classification")
+
+
+def test_exact_kernel_rejects_non_rbf_family():
+    X, y = make_regression(n_samples=30, n_features=3, random_state=4)
+    model = SnapBoostKernelRidgeRegressor(p_tree=0.0, num_iterations=1)
+    model.kernel_types = ("laplacian",)
+    with pytest.raises(ValueError, match="RBF"):
+        model.fit(X, y)
+
+
+def test_max_features_string_and_boolean_are_validated_at_fit():
+    X, y = make_regression(n_samples=30, n_features=3, random_state=4)
+    SnapBoostRegressor(max_features="sqrt", num_iterations=1, random_state=4).fit(X, y)
+    with pytest.raises(ValueError, match="max_features"):
+        SnapBoostRegressor(max_features=True, num_iterations=1).fit(X, y)
+
+
+def test_legacy_snapboost_set_params_rebuilds_valid_pool():
+    with pytest.warns(FutureWarning, match="deprecated"):
+        model = SnapBoost(num_iterations=1, verbose=False, random_state=0)
+    model.set_params(p_tree=0.5, min_max_depth=1, max_max_depth=1)
+    assert model.probabilities_ == pytest.approx([0.5, 0.5])
+

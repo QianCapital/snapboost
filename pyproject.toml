@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "snapboost"
-version = "0.2.1"
+dynamic = ["version"]
 description = "SnapBoost heterogeneous Newton boosting with decision trees and RFF ridge regressors"
 readme = "README.md"
 license = "MIT"
@@ -13,7 +13,7 @@ requires-python = ">=3.9"
 authors = [{name = "Qian Capital", email = "samson.qian@qiancapital.com"}]
 keywords = ["boosting", "gradient-boosting", "snapboost", "heterogeneous-newton"]
 dependencies = [
-    "hnbm>=0.3.1",
+    "hnbm>=1.0.0",
     "numpy>=1.20",
     "scikit-learn>=1.0",
     "tqdm>=4.50",
@@ -46,6 +46,12 @@ Repository = "https://github.com/qiancapital/snapboost"
 where = ["."]
 include = ["snapboost*"]
 
+[tool.setuptools.dynamic]
+version = {attr = "snapboost.__version__"}
+
+[tool.setuptools.package-data]
+snapboost = ["py.typed"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--strict-markers"
@@ -57,7 +63,7 @@ branch = true
 [tool.coverage.report]
 show_missing = true
 # Ratchet: raise this as coverage improves, never lower it.
-fail_under = 85
+fail_under = 90
 
 [tool.ruff]
 line-length = 88

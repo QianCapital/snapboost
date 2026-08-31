@@ -66,9 +66,11 @@ imputes/one-hot encodes categorical data with unseen-category support. Use it in
 a normal `Pipeline`; it does not modify SnapBoost internals.
 
 
-## SnapBoost (legacy)
+## SnapBoost (deprecated)
 
-Accepts a `mode` parameter (`"classification"` or `"regression"`). Prefer the task-specific classes above.
+Accepts a `mode` parameter (`"classification"` or `"regression"`). This class
+emits `FutureWarning` and will be removed in 2.0. Prefer the task-specific
+classes above.
 
 ```python
 from snapboost import SnapBoost

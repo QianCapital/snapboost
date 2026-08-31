@@ -1,4 +1,5 @@
 import inspect
+import warnings
 from collections.abc import Sequence
 from numbers import Integral, Real
 
@@ -295,10 +296,13 @@ class _SnapBoostMixin:
 
     def _set_snapboost_params(self, **params):
         self._validate_set_param_keys(params)
-        rebuild = bool(self._REBUILD_PARAMS.intersection(params))
-        self._validate_snapboost_params(params)
         result = super().set_params(**params)
-        if rebuild:
+        try:
+            self._validate_snapboost_params()
+        except (TypeError, ValueError):
+            return result
+        rebuild = bool(self._REBUILD_PARAMS.intersection(params))
+        if rebuild or not self.base_learners_:
             self._build_base_learners()
         return result
 
@@ -323,22 +327,9 @@ class SnapBoost(_SnapBoostMixin, HNBM):
     """
     HNBM realization using decision trees and RFF ridge regressors.
 
-    Prefer :class:`SnapBoostClassifier` or :class:`SnapBoostRegressor` for
-    task-specific models without a ``mode`` parameter.
-
-    Args:
-        num_iterations (int): number of boosting iterations
-        learning_rate (float): learning rate
-        p_tree (float): probability of selecting a tree at each iteration
-        min_max_depth (int): minimum maximum depth of a tree in the ensemble
-        max_max_depth (int): maximum maximum depth of a tree in the ensemble
-        min_samples_leaf (int): minimum samples per leaf for decision trees
-        alpha (float): L2-regularization penalty in the ridge regression
-        gamma (float): RBF-kernel parameter for random Fourier features
-        n_components (int): number of random Fourier features
-        mode (string): classification or regression
-        random_state (int): random seed for tree fitting and learner selection
-        verbose (bool): whether to show a progress bar during training
+    Deprecated. Prefer :class:`SnapBoostClassifier` or
+    :class:`SnapBoostRegressor` for task-specific models without a ``mode``
+    parameter.
     """
 
     def __init__(
@@ -368,7 +359,13 @@ class SnapBoost(_SnapBoostMixin, HNBM):
             n_components=n_components,
         )
         super().__init__(num_iterations, learning_rate, mode, random_state, verbose)
-        self._validate_snapboost_params()
+        warnings.warn(
+            "SnapBoost(mode=...) is deprecated and will be removed in a "
+            "future release. Use SnapBoostClassifier or SnapBoostRegressor "
+            "instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
 
     def set_params(self, **params):
         return self._set_snapboost_params(**params)
@@ -439,7 +436,6 @@ class SnapBoostClassifier(_SnapBoostMixin, HNBMClassifier):
             objective=objective,
             objective_parameter=objective_parameter,
         )
-        self._validate_snapboost_params()
 
     def set_params(self, **params):
         if "mode" in params:
@@ -512,7 +508,6 @@ class SnapBoostRegressor(_SnapBoostMixin, HNBMRegressor):
             objective=objective,
             objective_parameter=objective_parameter,
         )
-        self._validate_snapboost_params()
 
     def set_params(self, **params):
         if "mode" in params:
@@ -553,21 +548,8 @@ class _KernelRidgePoolMixin(_SnapBoostMixin):
 
 
 class SnapBoost_KernelRidge(_KernelRidgePoolMixin, HNBM):
-    """
-    HNBM realization using decision trees and exact kernel ridge regressors.
-    Args:
-        num_iterations (int): number of boosting iterations
-        learning_rate (float): learning rate
-        p_tree (float): probability of selecting a tree at each iteration
-        min_max_depth (int): minimum maximum depth of a tree in the ensemble
-        max_max_depth (int): maximum maximum depth of a tree in the ensemble
-        min_samples_leaf (int): minimum samples per leaf for decision trees
-        alpha (float): L2-regularization penalty in the ridge regression
-        gamma (float): RBF-kernel parameter
-        mode (string): classification or regression
-        random_state (int): random seed for tree fitting and learner selection
-        verbose (bool): whether to show a progress bar during training
-    """
+    """Deprecated exact-kernel estimator. Use the task-specific classes."""
+
     def __init__(self, num_iterations=100, learning_rate=0.1, p_tree=0.9,
                  min_max_depth=2, max_max_depth=4, min_samples_leaf=10,
                  alpha=1.0, gamma=1.0,
@@ -583,14 +565,25 @@ class SnapBoost_KernelRidge(_KernelRidgePoolMixin, HNBM):
         )
 
         super().__init__(num_iterations, learning_rate, mode, random_state, verbose)
-        self._validate_snapboost_params()
+        warnings.warn(
+            "SnapBoost_KernelRidge is deprecated and will be removed in a "
+            "future release. Use SnapBoostKernelRidgeClassifier or "
+            "SnapBoostKernelRidgeRegressor instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
 
     def set_params(self, **params):
         return self._set_snapboost_params(**params)
 
 
 class SnapBoostKernelRidgeClassifier(_KernelRidgePoolMixin, HNBMClassifier):
-    """Binary SnapBoost classifier using exact RBF kernel ridge learners."""
+    """Binary SnapBoost classifier using exact RBF kernel ridge learners.
+
+    This specialized surface is frozen in 1.0: it does not expose the adaptive
+    training controls of :class:`SnapBoostClassifier`. Prefer the RFF-based
+    classifier unless an exact kernel is required.
+    """
 
     def __init__(
         self,
@@ -619,7 +612,6 @@ class SnapBoostKernelRidgeClassifier(_KernelRidgePoolMixin, HNBMClassifier):
             random_state=random_state,
             verbose=verbose,
         )
-        self._validate_snapboost_params()
 
     def set_params(self, **params):
         if "mode" in params:
@@ -628,7 +620,12 @@ class SnapBoostKernelRidgeClassifier(_KernelRidgePoolMixin, HNBMClassifier):
 
 
 class SnapBoostKernelRidgeRegressor(_KernelRidgePoolMixin, HNBMRegressor):
-    """SnapBoost regressor using exact RBF kernel ridge learners."""
+    """SnapBoost regressor using exact RBF kernel ridge learners.
+
+    This specialized surface is frozen in 1.0: it does not expose the adaptive
+    training controls of :class:`SnapBoostRegressor`. Prefer the RFF-based
+    regressor unless an exact kernel is required.
+    """
 
     def __init__(
         self,
@@ -657,7 +654,6 @@ class SnapBoostKernelRidgeRegressor(_KernelRidgePoolMixin, HNBMRegressor):
             random_state=random_state,
             verbose=verbose,
         )
-        self._validate_snapboost_params()
 
     def set_params(self, **params):
         if "mode" in params:

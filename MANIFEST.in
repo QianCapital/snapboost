@@ -4,4 +4,6 @@ include REFERENCES.md
 include CITATION.bib
 include requirements.txt
 include Dockerfile
+include snapboost/py.typed
 recursive-include benchmarks *.py
+

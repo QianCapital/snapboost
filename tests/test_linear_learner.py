@@ -19,3 +19,13 @@ def test_weighted_linear_regressor_rejects_invalid_weights():
     y = np.arange(10.0)
     with pytest.raises(ValueError, match="positive"):
         WeightedLinearRegressor().fit(X, y, sample_weight=np.zeros(10))
+    with pytest.raises(ValueError, match="boolean"):
+        WeightedLinearRegressor(scale_features="yes").fit(X, y)
+    with pytest.raises(ValueError, match="finite"):
+        WeightedLinearRegressor(alpha=-1.0).fit(X, y)
+    with pytest.raises(ValueError, match="one value"):
+        WeightedLinearRegressor().fit(X, y, sample_weight=np.ones((10, 1)))
+    fitted = WeightedLinearRegressor().fit(X, y)
+    with pytest.raises(ValueError, match="features"):
+        fitted.predict(np.ones((2, 3)))
+

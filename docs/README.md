@@ -100,6 +100,7 @@ make -C docs archive
 5. Treat `_build/` as generated output; make changes in the source files,
    templates, or static assets instead.
 
-When adding or removing published versions, keep [`versions.json`](versions.json)
-and the deployment workflow in sync. The site assembly script also discovers
-versioned directories and writes the final version metadata during deployment.
+When adding or removing published versions, update [`versions.json`](versions.json)
+and push `master`. GitHub Pages deploys only from `master`/`main`; git tags
+cannot deploy because of environment protection rules. The workflow rebuilds
+every `/vX.Y.Z/` snapshot listed in that file.

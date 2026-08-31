@@ -4,15 +4,15 @@
 
 At each boosting round, SnapBoost stochastically selects either a decision tree or an RFF ridge regressor. That mix captures both local, axis-aligned structure and smooth global patterns.
 
-## New in 0.2.0
+## New in 1.0.0
 
-- Adaptive greedy learner-family selection alongside the original stochastic mode.
-- Per-round line search and stored learner contribution weights.
-- Observation weights, validation histories, and early stopping.
-- Row and tree-feature subsampling.
-- Scaled, reproducible, round-specific random Fourier features.
+- Frozen `SnapBoostClassifier` / `SnapBoostRegressor` public API.
+- sklearn estimator tags and `check_estimator` coverage via HNBM 1.0.
+- Parameter validation at `fit`, matching the sklearn contract.
+- `SnapBoost(mode=...)` and `SnapBoost_KernelRidge` are deprecated.
 
-SnapBoost 0.2.0 requires HNBM 0.3.0 or newer.
+SnapBoost 1.0 requires HNBM 1.0 or newer. See [limitations](limitations.md)
+for the binary-only, dense-input, and CART-tree contract.
 
 Key properties:
 
@@ -48,6 +48,7 @@ installation
 quickstart
 api
 parameters
+limitations
 examples
 references
 license

@@ -1,8 +1,33 @@
 # Changelog
 
+## 1.0.0
+
+Release date: 2026-08-30
+
+- Freeze `SnapBoostClassifier` and `SnapBoostRegressor` as the 1.0 public API.
+- Require HNBM 1.0 or newer and inherit its sklearn estimator contract.
+- Delay SnapBoost-specific parameter validation until `fit`.
+- Deprecate `SnapBoost(mode=...)` and `SnapBoost_KernelRidge`.
+- Freeze the exact-kernel estimators as a specialized surface without adaptive
+  training controls.
+- Add sklearn `check_estimator` coverage for the recommended estimators.
+- Document limitations (binary classification, dense inputs, CART trees,
+  pipeline-only missing values and categoricals).
+- Mark the package as typed (`py.typed`) and raise the coverage floor to 90%.
+
+### Compatibility
+
+- Requires HNBM 1.0.0 or newer.
+- Invalid constructor values are stored and rejected at `fit` instead of at
+  construction.
+- `SnapBoost` and `SnapBoost_KernelRidge` emit `FutureWarning` and will be
+  removed in 2.0.
+- Default training remains random HNBM selection without line search,
+  subsampling, or early stopping.
+
 ## 0.2.1
 
-Release date: staged
+Release date: 2026-08-30
 
 - Avoid constructing a kernel family when `p_tree + p_linear` already sums to
   one and rounding leaves a negligible residual probability.
@@ -43,3 +68,4 @@ Release date: 2026-08-11
   search, subsampling, or early stopping.
 - Recommended task-specific estimators expose the adaptive controls; legacy
   and exact-kernel constructor signatures remain stable.
+

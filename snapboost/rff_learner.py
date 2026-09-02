@@ -1,3 +1,7 @@
+"""Random Fourier feature ridge learners for SnapBoost."""
+
+from __future__ import annotations
+
 from numbers import Integral, Real
 
 import numpy as np
@@ -9,6 +13,26 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
 
 
+def is_allowed_gamma(value: object) -> bool:
+    """Return whether ``value`` is a positive bandwidth or ``'scale'``."""
+    if value == "scale":
+        return True
+    if isinstance(value, (bool, np.bool_)) or not isinstance(value, Real):
+        return False
+    number = float(value)
+    return bool(np.isfinite(number) and number > 0)
+
+
+def resolve_kernel_gamma(gamma: object, X: np.ndarray) -> float:
+    """Map ``gamma='scale'`` to sklearn's ``1 / (n_features * variance)``."""
+    if gamma == "scale":
+        variance = float(np.var(X))
+        if not np.isfinite(variance) or variance <= 0:
+            return 1.0
+        return 1.0 / (X.shape[1] * variance)
+    return float(np.asarray(gamma, dtype=float))
+
+
 class LaplacianSampler(BaseEstimator, TransformerMixin):
     """Random Fourier features for the Laplacian (L1 exponential) kernel."""
 
@@ -17,12 +41,39 @@ class LaplacianSampler(BaseEstimator, TransformerMixin):
         self.n_components = n_components
         self.random_state = random_state
 
+    def _validate_params(self):
+        if not is_allowed_gamma(self.gamma):
+            raise ValueError(
+                "gamma must be a finite number > 0 or 'scale', "
+                f"got {self.gamma}."
+            )
+        if (
+            isinstance(self.n_components, (bool, np.bool_))
+            or not isinstance(self.n_components, Integral)
+            or self.n_components < 1
+        ):
+            raise ValueError(
+                "n_components must be an integer >= 1, "
+                f"got {self.n_components}."
+            )
+        if self.random_state is not None and (
+            isinstance(self.random_state, (bool, np.bool_))
+            or not isinstance(self.random_state, Integral)
+            or not 0 <= self.random_state <= np.iinfo(np.uint32).max
+        ):
+            raise ValueError(
+                "random_state must be an integer between 0 and 2**32 - 1 "
+                f"or None, got {self.random_state}."
+            )
+
     def fit(self, X, y=None):
+        self._validate_params()
         X = check_array(X, dtype=float)
+        gamma = resolve_kernel_gamma(self.gamma, X)
         rng = np.random.default_rng(self.random_state)
         self.random_weights_ = rng.standard_cauchy(
             size=(X.shape[1], self.n_components)
-        ) * self.gamma
+        ) * gamma
         self.random_offset_ = rng.uniform(0.0, 2.0 * np.pi, self.n_components)
         self.n_features_in_ = X.shape[1]
         return self
@@ -35,8 +86,9 @@ class LaplacianSampler(BaseEstimator, TransformerMixin):
                 f"X has {X.shape[1]} features, but sampler was trained with "
                 f"{self.n_features_in_}."
             )
+        n_components = self.random_weights_.shape[1]
         projection = X @ self.random_weights_ + self.random_offset_
-        return np.sqrt(2.0 / self.n_components) * np.cos(projection)
+        return np.sqrt(2.0 / n_components) * np.cos(projection)
 
 
 class RandomFourierRidgeRegressor(BaseEstimator, RegressorMixin):
@@ -98,14 +150,10 @@ class RandomFourierRidgeRegressor(BaseEstimator, RegressorMixin):
             raise ValueError(
                 f"alpha must be a finite number > 0, got {self.alpha}."
             )
-        if (
-            isinstance(self.gamma, (bool, np.bool_))
-            or not isinstance(self.gamma, Real)
-            or not np.isfinite(self.gamma)
-            or self.gamma <= 0
-        ):
+        if not is_allowed_gamma(self.gamma):
             raise ValueError(
-                f"gamma must be a finite number > 0, got {self.gamma}."
+                "gamma must be a finite number > 0 or 'scale', "
+                f"got {self.gamma}."
             )
         if (
             isinstance(self.n_components, (bool, np.bool_))

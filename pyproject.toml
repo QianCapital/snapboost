@@ -12,8 +12,21 @@ license-files = ["LICENSE"]
 requires-python = ">=3.9"
 authors = [{name = "Qian Capital", email = "samson.qian@qiancapital.com"}]
 keywords = ["boosting", "gradient-boosting", "snapboost", "heterogeneous-newton"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed",
+]
 dependencies = [
-    "hnbm>=1.0.0",
+    "hnbm>=1.2.0",
     "numpy>=1.20",
     "scikit-learn>=1.0",
     "tqdm>=4.50",

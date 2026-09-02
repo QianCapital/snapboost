@@ -29,3 +29,10 @@ def test_weighted_linear_regressor_rejects_invalid_weights():
     with pytest.raises(ValueError, match="features"):
         fitted.predict(np.ones((2, 3)))
 
+
+def test_weighted_linear_regressor_accepts_scalar_sample_weight():
+    X = np.arange(20.0).reshape(10, 2)
+    y = np.arange(10.0)
+    model = WeightedLinearRegressor().fit(X, y, sample_weight=2.0)
+    assert np.all(np.isfinite(model.predict(X)))
+

@@ -10,7 +10,7 @@ python -m mypy
 python -m pytest --cov --cov-report=term-missing
 ```
 
-Publish **HNBM 1.x before SnapBoost 1.x**. SnapBoost 1.0 requires `hnbm>=1.0.0`.
+Publish **HNBM 1.x before SnapBoost 1.x**. SnapBoost 1.2 requires `hnbm>=1.2.0`.
 
 ## Semantic versioning
 

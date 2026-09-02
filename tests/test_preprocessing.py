@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 from sklearn.pipeline import Pipeline
 
 from snapboost import SnapBoostClassifier, make_tabular_preprocessor
@@ -37,4 +38,31 @@ def test_tabular_preprocessor_can_scale_numeric_columns():
     transformed = transformer.fit_transform(X)
     assert transformed.shape[0] == 3
     assert np.all(np.isfinite(transformed))
+
+
+def test_tabular_preprocessor_treats_a_string_as_one_column_name():
+    pd = pytest.importorskip("pandas")
+    frame = pd.DataFrame({
+        "num": [1.0, np.nan, 3.0],
+        "cat": ["a", "b", "a"],
+    })
+    transformer = make_tabular_preprocessor(categorical_features="cat")
+    transformed = transformer.fit_transform(frame)
+    assert transformed.shape[0] == 3
+    assert np.all(np.isfinite(transformed))
+
+
+def test_tabular_preprocessor_accepts_a_single_column_index():
+    X = np.array([[1.0, "a"], [2.0, "b"], [3.0, "a"]], dtype=object)
+    transformer = make_tabular_preprocessor(categorical_features=1)
+    transformed = transformer.fit_transform(X)
+    assert transformed.shape[0] == 3
+    assert np.all(np.isfinite(transformed))
+
+
+def test_tabular_preprocessor_rejects_invalid_column_selectors():
+    with pytest.raises(ValueError, match="categorical_features"):
+        make_tabular_preprocessor(categorical_features=True)
+    with pytest.raises(ValueError, match="categorical_features"):
+        make_tabular_preprocessor(categorical_features=object())
 

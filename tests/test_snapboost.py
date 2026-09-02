@@ -64,6 +64,44 @@ def test_classifier_preserves_string_labels():
     assert set(model.predict(X)).issubset({"negative", "positive"})
 
 
+def test_classifier_fits_multiclass_softmax():
+    X, y = make_classification(
+        n_samples=90,
+        n_features=6,
+        n_informative=4,
+        n_redundant=0,
+        n_classes=3,
+        n_clusters_per_class=1,
+        random_state=6,
+    )
+    labels = np.array(["red", "green", "blue"])[y]
+    model = SnapBoostClassifier(
+        num_iterations=6, p_tree=1.0, random_state=6, verbose=False
+    ).fit(X, labels)
+
+    probabilities = model.predict_proba(X)
+    logits = model.decision_function(X)
+
+    assert model.n_classes_ == 3
+    assert np.array_equal(model.classes_, ["blue", "green", "red"])
+    assert probabilities.shape == (90, 3)
+    assert logits.shape == (90, 3)
+    assert np.allclose(probabilities.sum(axis=1), 1.0)
+    assert set(model.predict(X)).issubset({"red", "green", "blue"})
+    assert model.n_iter_ == 6
+    assert all(len(round_entry) == 3 for round_entry in model.ensemble_)
+
+
+def test_classifier_rejects_single_class_target():
+    X = np.arange(40.0).reshape(20, 2)
+    model = SnapBoostClassifier(num_iterations=2, random_state=0, verbose=False)
+
+    with pytest.raises(ValueError, match="only one class"):
+        model.fit(X, np.ones(20))
+
+    assert not hasattr(model, "ensemble_")
+
+
 def test_regressor_works_with_grid_search():
     X, y = make_regression(n_samples=60, n_features=4, random_state=5)
     search = GridSearchCV(
@@ -100,12 +138,14 @@ def test_fit_forwards_sample_weight_and_eval_set():
         ("max_max_depth", True, "integer"),
         ("n_components", 1.5, "integer"),
         ("n_components", True, "integer"),
+        ("n_components", None, "integer"),
         ("p_tree", float("nan"), "between"),
         ("alpha", float("nan"), "finite"),
         ("gamma", float("inf"), "finite"),
         ("min_samples_leaf", 1.5, "integer"),
         ("max_features", np.array([0.5]), "max_features"),
         ("monotonic_cst", (0, 2), "monotonic_cst"),
+        ("monotonic_cst", (), "monotonic_cst"),
         ("p_linear", -0.1, "p_linear"),
     ],
 )
@@ -243,10 +283,14 @@ def test_task_specific_kernel_ridge_estimators_fit(estimator_class, checker):
 
     assert checker(model)
     assert np.all(np.isfinite(model.predict(X)))
+    assert all(
+        learner.pipeline_.named_steps.get("scale") is not None
+        for learner in model.ensemble_
+    )
 
 
 def test_package_exposes_version():
-    assert __version__ == "1.0.0"
+    assert __version__ == "1.2.0"
 
 
 def test_advanced_regressor_supports_greedy_selection_and_line_search():
@@ -342,6 +386,37 @@ def test_monotonic_constraints_are_opt_in_and_version_guarded():
     else:
         with pytest.raises(RuntimeError, match="scikit-learn"):
             model.fit(X, y)
+
+
+def test_monotonic_constraints_are_rejected_for_multiclass_targets():
+    X, y = make_classification(
+        n_samples=60,
+        n_features=4,
+        n_informative=3,
+        n_redundant=0,
+        n_classes=3,
+        n_clusters_per_class=1,
+        random_state=9,
+    )
+    model = SnapBoostClassifier(
+        num_iterations=1, monotonic_cst=(1, 0, 0, 0), random_state=9
+    )
+
+    with pytest.raises(ValueError, match="monotonic_cst is not supported"):
+        model.fit(X, y)
+
+
+def test_monotonic_constraints_still_allow_binary_targets():
+    X, y = make_classification(n_samples=60, n_features=4, random_state=9)
+    model = SnapBoostClassifier(
+        num_iterations=1, monotonic_cst=(1, 0, 0, 0), random_state=9
+    )
+    if "monotonic_cst" not in inspect.signature(DecisionTreeRegressor).parameters:
+        pytest.skip("scikit-learn lacks monotonic tree constraints")
+
+    model.fit(X, y)
+
+    assert model.n_classes_ == 2
 
 
 def test_optional_linear_family_receives_explicit_probability():
@@ -447,6 +522,19 @@ def test_task_estimators_reject_mode_in_set_params():
         SnapBoostKernelRidgeRegressor().set_params(mode="classification")
 
 
+def test_exact_kernel_weight_scale_does_not_change_predictions():
+    X, y = make_regression(n_samples=40, n_features=3, random_state=4)
+    weights = np.linspace(1.0, 2.0, X.shape[0])
+    first = SnapBoostKernelRidgeRegressor(
+        p_tree=0.0, num_iterations=2, random_state=4
+    ).fit(X, y, sample_weight=weights)
+    second = SnapBoostKernelRidgeRegressor(
+        p_tree=0.0, num_iterations=2, random_state=4
+    ).fit(X, y, sample_weight=weights * 100.0)
+
+    assert first.predict(X) == pytest.approx(second.predict(X))
+
+
 def test_exact_kernel_rejects_non_rbf_family():
     X, y = make_regression(n_samples=30, n_features=3, random_state=4)
     model = SnapBoostKernelRidgeRegressor(p_tree=0.0, num_iterations=1)
@@ -475,4 +563,65 @@ def test_all_zero_sample_weights_mention_zero_in_the_error():
         SnapBoostRegressor(num_iterations=1, random_state=4).fit(
             X, y, sample_weight=np.zeros(len(y))
         )
+
+
+def test_gamma_scale_fits_rff_and_exact_kernel_estimators():
+    X, y = make_regression(n_samples=40, n_features=3, random_state=4)
+    rff = SnapBoostRegressor(
+        p_tree=0.0, gamma="scale", num_iterations=2, random_state=4
+    ).fit(X, y)
+    kernel = SnapBoostKernelRidgeRegressor(
+        p_tree=0.0, gamma="scale", num_iterations=2, random_state=4
+    ).fit(X, y)
+
+    assert np.all(np.isfinite(rff.predict(X)))
+    assert np.all(np.isfinite(kernel.predict(X)))
+
+
+def test_alpha_linear_is_independent_of_rff_alpha():
+    model = SnapBoostRegressor(
+        p_tree=0.4,
+        p_linear=0.3,
+        min_max_depth=2,
+        max_max_depth=2,
+        alpha=3.0,
+        alpha_linear=7.5,
+        num_iterations=1,
+        random_state=0,
+    )
+    model._build_base_learners()
+
+    linear = next(
+        learner for learner in model.base_learners_
+        if isinstance(learner, WeightedLinearRegressor)
+    )
+    rff = next(
+        learner for learner in model.base_learners_
+        if isinstance(learner, RandomFourierRidgeRegressor)
+    )
+    assert linear.alpha == 7.5
+    assert rff.alpha == 3.0
+
+
+def test_staged_predict_and_permutation_importance_are_available():
+    X, y = make_regression(n_samples=40, n_features=3, random_state=4)
+    model = SnapBoostRegressor(num_iterations=3, random_state=4).fit(X, y)
+    staged = list(model.staged_predict(X))
+    importance = model.permutation_importance(X, y, n_repeats=2, random_state=4)
+
+    assert len(staged) == 3
+    assert staged[-1] == pytest.approx(model.predict(X))
+    assert importance.importances_mean.shape == (3,)
+
+
+def test_eval_sample_weight_is_forwarded():
+    X, y = make_regression(n_samples=40, n_features=3, random_state=4)
+    model = SnapBoostRegressor(num_iterations=2, random_state=4).fit(
+        X[:30],
+        y[:30],
+        eval_set=(X[30:], y[30:]),
+        eval_sample_weight=np.linspace(1.0, 3.0, 10),
+    )
+
+    assert len(model.history_["validation_loss"]) == 2
 

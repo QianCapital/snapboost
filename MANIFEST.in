@@ -1,9 +1,11 @@
 include README.md
 include CHANGELOG.md
+include CONTRIBUTING.md
+include MATH.md
 include REFERENCES.md
 include CITATION.bib
+include LICENSE
 include requirements.txt
 include Dockerfile
 include snapboost/py.typed
 recursive-include benchmarks *.py
-

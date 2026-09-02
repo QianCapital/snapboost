@@ -1,4 +1,4 @@
-"""Weighted linear base learners for optional SnapBoost pools."""
+"""Weighted exact-kernel base learners for the specialized SnapBoost estimators."""
 
 from __future__ import annotations
 
@@ -6,17 +6,20 @@ from numbers import Real
 
 import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin
-from sklearn.linear_model import Ridge
+from sklearn.kernel_ridge import KernelRidge
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
 
+from .rff_learner import is_allowed_gamma, resolve_kernel_gamma
 
-class WeightedLinearRegressor(BaseEstimator, RegressorMixin):
-    """Standardized weighted ridge regression for Newton working targets."""
 
-    def __init__(self, alpha=1.0, scale_features=True):
+class WeightedKernelRidgeRegressor(BaseEstimator, RegressorMixin):
+    """Standardized weighted RBF kernel ridge for Newton working targets."""
+
+    def __init__(self, alpha=1.0, gamma=1.0, scale_features=True):
         self.alpha = alpha
+        self.gamma = gamma
         self.scale_features = scale_features
 
     def fit(self, X, y, sample_weight=None):
@@ -28,6 +31,8 @@ class WeightedLinearRegressor(BaseEstimator, RegressorMixin):
             or self.alpha <= 0
         ):
             raise ValueError("alpha must be a finite number > 0.")
+        if not is_allowed_gamma(self.gamma):
+            raise ValueError("gamma must be a finite number > 0 or 'scale'.")
         if not isinstance(self.scale_features, (bool, np.bool_)):
             raise ValueError("scale_features must be a boolean.")
         if sample_weight is not None:
@@ -44,10 +49,22 @@ class WeightedLinearRegressor(BaseEstimator, RegressorMixin):
             sample_weight = sample_weight[positive]
             sample_weight *= positive.sum() / sample_weight.sum()
             X, y = X[positive], y[positive]
+        gamma_source = X
+        if self.scale_features:
+            scaler = StandardScaler()
+            if sample_weight is None:
+                scaler.fit(X)
+            else:
+                scaler.fit(X, sample_weight=sample_weight)
+            gamma_source = scaler.transform(X)
+        gamma = resolve_kernel_gamma(self.gamma, gamma_source)
         steps = []
         if self.scale_features:
             steps.append(("scale", StandardScaler()))
-        steps.append(("ridge", Ridge(alpha=self.alpha)))
+        steps.append((
+            "ridge",
+            KernelRidge(alpha=self.alpha, kernel="rbf", gamma=gamma),
+        ))
         pipeline = Pipeline(steps)
         fit_params = {}
         if sample_weight is not None:

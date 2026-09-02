@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from sklearn.exceptions import DataConversionWarning
 
-from snapboost import RandomFourierRidgeRegressor
+from snapboost import LaplacianSampler, RandomFourierRidgeRegressor
 
 
 @pytest.mark.parametrize(
@@ -124,3 +124,22 @@ def test_laplacian_random_features_fit_and_predict():
     ).fit(X, y)
 
     assert np.all(np.isfinite(model.predict(X)))
+
+
+def test_laplacian_sampler_rejects_invalid_parameters():
+    with pytest.raises(ValueError, match="integer"):
+        LaplacianSampler(n_components=None).fit(np.ones((3, 2)))
+    with pytest.raises(ValueError, match="finite"):
+        LaplacianSampler(gamma=-1.0).fit(np.ones((3, 2)))
+
+
+def test_gamma_scale_fits_rbf_and_laplacian_learners():
+    X = np.arange(20.0).reshape(10, 2)
+    y = np.arange(10.0)
+    rbf = RandomFourierRidgeRegressor(gamma="scale", random_state=2).fit(X, y)
+    laplacian = RandomFourierRidgeRegressor(
+        kernel="laplacian", gamma="scale", n_components=32, random_state=2
+    ).fit(X, y)
+
+    assert np.all(np.isfinite(rbf.predict(X)))
+    assert np.all(np.isfinite(laplacian.predict(X)))

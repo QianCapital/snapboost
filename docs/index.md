@@ -4,6 +4,24 @@
 
 At each boosting round, SnapBoost stochastically selects either a decision tree or an RFF ridge regressor. That mix captures both local, axis-aligned structure and smooth global patterns.
 
+## New in 1.2.0
+
+- Native multiclass classification via HNBM softmax Newton boosting: one
+  scalar learner per class each round, `predict_proba` of shape
+  `(n_samples, n_classes)`, and `n_classes_` on the fitted estimator.
+- Binary logistic classification is unchanged (scalar `decision_function`).
+- Requires HNBM 1.2.0 or newer.
+
+## New in 1.1.0
+
+- Staged prediction (`staged_predict`, `staged_predict_proba`,
+  `staged_decision_function`) and `permutation_importance`.
+- Original-label `eval_metric` and `eval_sample_weight` for validation loss
+  and early stopping.
+- `gamma="scale"` (sklearn variance-based kernel coefficient) and
+  `alpha_linear` for the optional linear family.
+- Requires HNBM 1.1 or newer.
+
 ## New in 1.0.0
 
 - Frozen `SnapBoostClassifier` / `SnapBoostRegressor` public API.
@@ -11,8 +29,8 @@ At each boosting round, SnapBoost stochastically selects either a decision tree 
 - Parameter validation at `fit`, matching the sklearn contract.
 - `SnapBoost(mode=...)` and `SnapBoost_KernelRidge` are deprecated.
 
-SnapBoost 1.0 requires HNBM 1.0 or newer. See [limitations](limitations.md)
-for the binary-only, dense-input, and CART-tree contract.
+See [limitations](limitations.md) for the dense-input and CART-tree contract.
+Classification supports binary logistic loss and multiclass softmax.
 
 Key properties:
 

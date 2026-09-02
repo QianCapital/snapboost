@@ -1,13 +1,28 @@
 # Limitations
 
-SnapBoost 1.0 is a scikit-learn realization of the NeurIPS 2020 HNBM idea, not
-a drop-in replacement for IBM Snap ML or XGBoost. The following constraints are
-part of the 1.0 contract.
+SnapBoost is a scikit-learn realization of the NeurIPS 2020 HNBM idea, not a
+drop-in replacement for IBM Snap ML or XGBoost. The following constraints are
+part of the 1.x contract.
 
-## Binary classification only
+## No multilabel or multioutput targets
 
-`SnapBoostClassifier` supports exactly two classes and logistic loss. Multiclass
-targets raise `ValueError` matching `"Only binary classification is supported."`
+`SnapBoostClassifier` supports binary logistic loss and multiclass softmax.
+Binary models keep a scalar `decision_function`. Multiclass models return
+shape `(n_samples, n_classes)` and store one scalar learner per class in
+each boosting round. Multilabel and multioutput targets raise `ValueError`.
+
+## No monotonic constraints under softmax
+
+`monotonic_cst` is rejected with `ValueError` when `fit` receives more than two
+classes. Constraints would bind each class score separately, and every score
+can rise with a feature while no class probability does, so the constraint
+would not mean what it appears to mean. scikit-learn rejects the same
+combination. Binary classification and regression are unaffected.
+
+Multiclass also takes a longer Newton step than XGBoost at the same
+`learning_rate`, because the softmax Hessian keeps the undamped diagonal. Tune
+`learning_rate` separately for multiclass instead of reusing binary settings,
+or guard the run with `early_stopping_rounds`. See MATH.md 4.2.1.
 
 ## Dense numeric inputs
 
@@ -27,8 +42,14 @@ Snap ML or XGBoost on large data.
 
 `SnapBoostKernelRidgeClassifier` and `SnapBoostKernelRidgeRegressor` keep a
 frozen constructor surface without greedy selection, line search, subsampling,
-or early stopping. They have quadratic memory cost. Prefer the default RFF path
-unless the dataset is small and an exact RBF kernel is required.
+or early stopping. They inherit binary and multiclass classification from HNBM
+but have quadratic memory cost. Prefer the default RFF path unless the dataset
+is small and an exact RBF kernel is required.
+
+## At least two classes are required
+
+Classifiers raise `ValueError` when `y` contains a single class. Fit a
+`DummyClassifier` for degenerate targets.
 
 ## Sample-weight equivalence
 

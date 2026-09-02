@@ -23,9 +23,40 @@ model.evaluate(X_test, y_test)  # prints log loss
 ```
 
 ```{note}
-Classification accepts any two distinct labels. Predictions retain the original
-labels and probability columns follow `model.classes_`.
+Classification accepts binary and multiclass labels. Predictions retain the
+original labels and probability columns follow `model.classes_`. Binary
+`decision_function` is a vector of length `n_samples`; multiclass returns
+shape `(n_samples, n_classes)`.
 ```
+
+Multiclass example:
+
+```python
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+from snapboost import SnapBoostClassifier
+
+X, y = load_iris(return_X_y=True)
+X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)
+
+model = SnapBoostClassifier(num_iterations=100, random_state=42)
+model.fit(X_train, y_train)
+print("Classes:", model.n_classes_)
+print("Probabilities shape:", model.predict_proba(X_test).shape)  # (n_samples, 3)
+```
+
+## Staged prediction and feature importance
+
+```python
+staged = list(model.staged_predict(X_test))
+importance = model.permutation_importance(X_test, y_test, n_repeats=5, random_state=42)
+print(len(staged), importance.importances_mean.shape)
+```
+
+`staged_predict` (and classifier `staged_predict_proba` /
+`staged_decision_function`) yields the ensemble after each boosting round.
+`permutation_importance` is the feature-importance API for mixed tree and
+kernel learners.
 
 ## Regression
 
@@ -52,10 +83,15 @@ model.evaluate(X_test, y_test)  # prints RMSE
 
 At each boosting iteration, SnapBoost samples a base learner from a fixed pool:
 
-1. **Decision trees** with `max_depth` drawn uniformly from `[min_max_depth, max_max_depth]`
-2. **One RFF ridge regressor** for smooth, global fits
+1. **Decision trees**, one candidate per `max_depth` in `[min_max_depth, max_max_depth]`
+2. **RFF ridge regressors** for smooth, global fits, one candidate per `(kernel, gamma)` pair
+3. **An optional linear ridge learner**, present only when `p_linear > 0`
 
-Trees are chosen with probability `p_tree` (split evenly across depths); the ridge model with probability `1 - p_tree`. Each selected learner is fit to the Newton direction (gradient / Hessian, weighted by the Hessian).
+The tree candidates share `p_tree` evenly, the kernel candidates share the
+remaining `1 - p_tree - p_linear` evenly, and the linear learner takes
+`p_linear`. Each selected learner is fit to the Newton direction (gradient /
+Hessian, weighted by the Hessian). Multiclass rounds fit one scalar learner per
+class from the same family.
 
 Prefer `SnapBoostClassifier` / `SnapBoostRegressor` for new code. The legacy `SnapBoost(..., mode=...)` class remains available.
 

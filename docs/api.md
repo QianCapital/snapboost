@@ -28,29 +28,32 @@ reg.fit(X, y)
 
 | Method | Classifier | Regressor | Description |
 |--------|:----------:|:---------:|-------------|
-| `fit(X, y, sample_weight=None, eval_set=None)` | ✓ | ✓ | Train, optionally with weights and validation data |
-| `predict(X)` | ✓ | ✓ | Class labels (0/1) or continuous values |
-| `predict_proba(X)` | ✓ | | Class probabilities, shape `(n_samples, 2)` |
-| `decision_function(X)` | ✓ | | Raw logits |
+| `fit(X, y, sample_weight=None, eval_set=None, *, eval_sample_weight=None)` | ✓ | ✓ | Train, optionally with weights and validation data |
+| `predict(X)` | ✓ | ✓ | Class labels from `classes_` or continuous values |
+| `predict_proba(X)` | ✓ | | Class probabilities, shape `(n_samples, n_classes)` |
+| `decision_function(X)` | ✓ | | Raw logits: `(n_samples,)` binary, `(n_samples, n_classes)` multiclass |
+| `staged_predict(X)` | ✓ | ✓ | Predictions after each boosting round |
+| `permutation_importance(X, y)` | ✓ | ✓ | Permutation importance of original features |
 | `score(X, y)` | ✓ | ✓ | Accuracy or R² |
 | `evaluate(X, y)` | ✓ | ✓ | Prints and returns log loss or RMSE |
 
 ```{eval-rst}
 .. autoclass:: snapboost.SnapBoostClassifier
-   :members: fit, predict, predict_proba, decision_function, score, evaluate, set_params
+   :members: fit, predict, predict_proba, decision_function, staged_predict, staged_predict_proba, staged_decision_function, permutation_importance, score, evaluate, set_params
    :undoc-members:
    :show-inheritance:
    :no-index:
 
 .. autoclass:: snapboost.SnapBoostRegressor
-   :members: fit, predict, score, evaluate, set_params
+   :members: fit, predict, staged_predict, permutation_importance, score, evaluate, set_params
    :undoc-members:
    :show-inheritance:
    :no-index:
 ```
 
 Fitted adaptive models expose `base_score_`, `learner_weights_`, `history_`,
-`best_iteration_`, and `n_iter_`. When `early_stopping_rounds` triggers, the
+`best_iteration_`, `n_iter_`, and for classifiers `classes_` / `n_classes_`.
+Multiclass `ensemble_` entries are one fitted scalar learner per class. When `early_stopping_rounds` triggers, the
 best validation ensemble is restored before `fit` returns. Passing an
 `eval_set` without `early_stopping_rounds` still records `best_iteration_`, but
 no learners are discarded, so predictions use all `n_iter_` of them.
@@ -105,11 +108,54 @@ Ridge regression on random Fourier features approximating RBF or Laplacian kerne
    :no-index:
 ```
 
+## Exact kernel ridge estimators
+
+`SnapBoostKernelRidgeClassifier` and `SnapBoostKernelRidgeRegressor` swap the
+random Fourier feature learner for an exact RBF kernel ridge learner. They keep
+a frozen constructor surface (`num_iterations`, `learning_rate`, `p_tree`,
+`min_max_depth`, `max_max_depth`, `min_samples_leaf`, `alpha`, `gamma`,
+`random_state`, `verbose`) and so do not expose greedy selection, line search,
+subsampling, or early stopping. Classification inherits binary logistic loss
+and multiclass softmax from HNBM. Memory grows quadratically in the number of
+samples, so prefer the RFF path unless an exact kernel is required.
+
+```python
+from snapboost import SnapBoostKernelRidgeClassifier
+
+clf = SnapBoostKernelRidgeClassifier(num_iterations=50, gamma=0.5, random_state=42)
+clf.fit(X, y)
+```
+
+```{eval-rst}
+.. autoclass:: snapboost.SnapBoostKernelRidgeClassifier
+   :members: fit, predict, predict_proba, decision_function, staged_predict, staged_predict_proba, staged_decision_function, permutation_importance, score, evaluate, set_params
+   :undoc-members:
+   :show-inheritance:
+   :no-index:
+
+.. autoclass:: snapboost.SnapBoostKernelRidgeRegressor
+   :members: fit, predict, staged_predict, permutation_importance, score, evaluate, set_params
+   :undoc-members:
+   :show-inheritance:
+   :no-index:
+```
+
+`SnapBoost_KernelRidge` is the deprecated `mode`-based equivalent. It emits
+`FutureWarning` and will be removed in 2.0.
+
 ## Optional learner and preprocessing helpers
 
 ```{eval-rst}
 .. autoclass:: snapboost.WeightedLinearRegressor
    :members: fit, predict
+   :show-inheritance:
+
+.. autoclass:: snapboost.WeightedKernelRidgeRegressor
+   :members: fit, predict
+   :show-inheritance:
+
+.. autoclass:: snapboost.LaplacianSampler
+   :members: fit, transform
    :show-inheritance:
 
 .. autofunction:: snapboost.make_tabular_preprocessor

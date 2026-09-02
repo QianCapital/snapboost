@@ -10,13 +10,52 @@ Unlike XGBoost and LightGBM, which rely exclusively on decision trees as base le
 
 This package is a Python/scikit-learn reimplementation inspired by [SnapBoost: A Heterogeneous Boosting Machine](https://arxiv.org/abs/2006.09745) (Parnell et al., NeurIPS 2020). See [REFERENCES.md](REFERENCES.md) for papers, related work, and citation details.
 
+## New in 1.2
+
+SnapBoost 1.2 inherits native multiclass classification from HNBM 1.2:
+softmax Newton boosting with one scalar learner per class each round.
+Binary logistic classification is unchanged. Multiclass
+`decision_function` and `predict_proba` have shape `(n_samples, n_classes)`,
+and fitted classifiers expose `n_classes_`. Requires HNBM 1.2.0 or newer.
+
+```python
+from sklearn.datasets import load_iris
+from snapboost import SnapBoostClassifier
+
+X, y = load_iris(return_X_y=True)
+model = SnapBoostClassifier(num_iterations=100, random_state=42)
+model.fit(X, y)
+print(model.n_classes_, model.predict_proba(X).shape)  # 3, (n_samples, 3)
+```
+
+## New in 1.1
+
+SnapBoost 1.1 adds `gamma="scale"`, an independent `alpha_linear` ridge
+penalty for the optional linear family, staged prediction, and
+`permutation_importance`. `eval_metric` receives original labels, and
+`eval_sample_weight` is accepted for validation loss and early stopping.
+Requires HNBM 1.1 or newer.
+
+```python
+staged = list(model.staged_predict(X))
+importance = model.permutation_importance(X, y, n_repeats=5, random_state=42)
+```
+
+## New in 1.0
+
+SnapBoost 1.0 freezes `SnapBoostClassifier` / `SnapBoostRegressor`, requires
+HNBM 1.0 or newer, and delays SnapBoost-specific parameter validation until
+`fit`. Constructing `SnapBoost(mode=...)` or `SnapBoost_KernelRidge` is
+deprecated.
+
 ---
 
 ## Table of Contents
 
+- [New in 1.2](#new-in-12)
 - [Documentation](#documentation)
 - [Features](#features)
-- [Mathematical Overview](#mathematical-overview)
+- [Heterogeneous Gradient Boosting](#heterogeneous-gradient-boosting)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Examples & Results](#examples--results)
@@ -42,7 +81,7 @@ cd docs && make html
 # open _build/html/index.html
 ```
 
-Documentation is published at https://snapboost.qiancapital.com/ (GitHub Pages). The live docs on `/` track `master` (**latest**). Release snapshots are under `/vX.Y.Z/` (for example `/v1.0.0/`) and are rebuilt from `docs/versions.json` on each `master` deploy. Use the version dropdown under **SnapBoost** in the sidebar to switch between them.
+Documentation is published at https://snapboost.qiancapital.com/ (GitHub Pages). The live docs on `/` track `master` (**latest**). Release snapshots are under `/vX.Y.Z/` (for example `/v1.2.0/`) and are rebuilt from `docs/versions.json` on each `master` deploy. Use the version dropdown under **SnapBoost** in the sidebar to switch between them.
 
 ---
 
@@ -52,7 +91,7 @@ Documentation is published at https://snapboost.qiancapital.com/ (GitHub Pages).
 |-----|-------------|
 | `gradient-boosting` | Second-order Newton boosting with gradient and Hessian weighting |
 | `heterogeneous-learners` | Mixes decision trees and kernel ridge regressors in one ensemble |
-| `classification` | Binary classification with logistic loss |
+| `classification` | Binary logistic loss or multiclass softmax |
 | `regression` | Continuous targets with mean squared error loss |
 | `scikit-learn` | Implements the scikit-learn estimator API (`fit`, `predict`, `score`, …) |
 | `randomized-ensemble` | Stochastic base-learner selection per iteration |
@@ -110,7 +149,26 @@ g=-y\,\sigma(-yF),\quad
 h=\sigma(yF)\sigma(-yF),
 $$
 
-with class probability $P(y=+1\mid x)=\sigma(F_M(x))$.
+with class probability $P(y=+1\mid x)=\sigma(F_M(x))$. Multiclass targets
+use a $K$-vector score $F(x)\in\mathbb{R}^K$ with
+
+$$
+p=\mathrm{softmax}(F),\quad
+\ell=-\log p_{y},\quad
+g_k=p_k-\mathbf{1}_{\{k=y\}},\quad
+h_k=p_k(1-p_k),
+$$
+
+$$
+r_k=-\frac{g_k}{h_k}
+=\frac{\mathbf{1}_{\{k=y\}}-p_k}{p_k(1-p_k)},
+\qquad
+F_{0,k}=\log\widehat p_k.
+$$
+
+Each round fits $K$ scalar learners from the same family and
+$P(y=k\mid x)=\mathrm{softmax}(F_M(x))_k$. See [MATH.md](MATH.md) for the
+full Hessian, the diagonal approximation, and the stable log-sum-exp form.
 
 The smooth branch approximates a stationary kernel with random features. For
 the default RBF kernel $k(x,x')=\exp(-\gamma\lVert x-x'\rVert_2^2)$,
@@ -157,7 +215,7 @@ cd snapboost
 pip install .
 ```
 
-**Requirements**: Python ≥ 3.9, NumPy, scikit-learn, tqdm, [`hnbm`](https://pypi.org/project/hnbm/) ≥ 1.0.0.
+**Requirements**: Python ≥ 3.9, NumPy, scikit-learn, tqdm, [`hnbm`](https://pypi.org/project/hnbm/) ≥ 1.2.0.
 
 ---
 
@@ -185,6 +243,18 @@ print("Probabilities shape:", model.predict_proba(X_test).shape)  # (n_samples, 
 model.evaluate(X_test, y_test)  # prints log loss
 ```
 
+Multiclass labels work the same way. `predict_proba` and `decision_function`
+then have one column per class:
+
+```python
+from sklearn.datasets import load_iris
+
+X, y = load_iris(return_X_y=True)
+model = SnapBoostClassifier(num_iterations=100, random_state=42)
+model.fit(X, y)
+print(model.n_classes_, model.predict_proba(X).shape)  # 3, (n_samples, 3)
+```
+
 ### Regression
 
 ```python
@@ -208,8 +278,8 @@ model.evaluate(X_test, y_test)  # prints RMSE
 
 ### Adaptive training
 
-Version 0.2 adds an opt-in adaptive training path while preserving the original
-random HNBM algorithm by default:
+An opt-in adaptive training path is available, while the original random HNBM
+algorithm remains the default:
 
 ```python
 model = SnapBoostRegressor(
@@ -331,10 +401,15 @@ See [Parameter_Exploration.ipynb](static/Parameter_Exploration.ipynb) for the fu
 
 The recommended entry points (similar to `XGBClassifier` / `XGBRegressor`). A concrete HNBM that builds an ensemble from:
 
-- **Decision trees** with depths sampled uniformly from `[min_max_depth, max_max_depth]`
-- **One RFF ridge regressor** for smooth global fits
+- **Decision trees**, one candidate per depth in `[min_max_depth, max_max_depth]`
+- **RFF ridge regressors** for smooth global fits, one candidate per `(kernel, gamma)` pair
+- **An optional linear ridge learner**, included only when `p_linear > 0`
 
-At each iteration, a learner is chosen with probability `p_tree` for trees (split evenly across depths) and `1 - p_tree` for the ridge model.
+Each round draws one family from this pool. The tree families share `p_tree`
+evenly, the kernel families share the remaining `1 - p_tree - p_linear` evenly,
+and the linear learner takes `p_linear`. With the defaults (`p_tree=0.9`,
+`p_linear=0.0`, three depths, one kernel) each tree depth is drawn with
+probability `0.3` and the RFF learner with probability `0.1`.
 
 ```python
 from snapboost import SnapBoostClassifier, SnapBoostRegressor
@@ -360,10 +435,12 @@ reg.fit(X, y)
 
 | Method | Classifier | Regressor | Description |
 |--------|------------|-----------|-------------|
-| `fit(X, y, sample_weight=None, eval_set=None)` | ✓ | ✓ | Train, optionally with weights and one validation pair |
+| `fit(X, y, sample_weight=None, eval_set=None, *, eval_sample_weight=None)` | ✓ | ✓ | Train, optionally with weights, validation data, and validation weights |
 | `predict(X)` | ✓ | ✓ | Original class labels or continuous values |
-| `predict_proba(X)` | ✓ | | Class probabilities, shape `(n_samples, 2)` |
-| `decision_function(X)` | ✓ | | Raw logits |
+| `predict_proba(X)` | ✓ | | Class probabilities, shape `(n_samples, n_classes)` |
+| `decision_function(X)` | ✓ | | Raw logits: `(n_samples,)` binary, `(n_samples, n_classes)` multiclass |
+| `staged_predict(X)` | ✓ | ✓ | Predictions after each boosting round |
+| `permutation_importance(X, y)` | ✓ | ✓ | Permutation importance of original features |
 | `score(X, y)` | ✓ | ✓ | Accuracy or R² |
 | `evaluate(X, y)` | ✓ | ✓ | Prints and returns log loss or RMSE |
 
@@ -404,9 +481,12 @@ clf = SnapBoostKernelRidgeClassifier(random_state=42)
 reg = SnapBoostKernelRidgeRegressor(random_state=42)
 ```
 
-Exact kernel ridge has substantially higher memory and runtime costs than the
-default RFF learner. The old `SnapBoost_KernelRidge` name remains available for
-backward compatibility, but new code should use the task-specific classes.
+These estimators keep a frozen constructor surface and so do not expose greedy
+selection, line search, subsampling, or early stopping. They do inherit binary
+and multiclass classification from HNBM. Exact kernel ridge has substantially
+higher memory and runtime costs than the default RFF learner. The old
+`SnapBoost_KernelRidge` name remains available for backward compatibility, but
+new code should use the task-specific classes.
 
 ### HNBM
 
@@ -440,6 +520,17 @@ class MyClassifier(HNBMClassifier):
 | `subsample` | `float` | `1.0` | Fraction of rows used to fit each base learner |
 | `early_stopping_rounds` | positive `int` or `None` | `None` | Validation patience before restoring the best ensemble |
 | `min_delta` | `float` | `0.0` | Minimum validation-loss improvement |
+| `objective` | `str` | `"auto"` | Loss to optimize. Classifiers accept `"auto"` and `"log_loss"`; regressors also accept `"squared_error"`, `"pseudo_huber"`, and `"quantile"` |
+| `objective_parameter` | `float` or `None` | `None` | Pseudo-Huber delta (default `1.0`) or quantile level (default `0.5`); ignored otherwise |
+
+Classifiers select logistic loss for binary targets and softmax for multiclass
+targets under both `objective="auto"` and `objective="log_loss"`.
+
+> **Choosing the Pseudo-Huber delta.** The Newton working response for
+> pseudo-Huber grows like `residual³ / delta²`, so the default `delta=1.0`
+> diverges on targets that are not roughly unit-scale. Standardize `y`, or set
+> `objective_parameter` to about the residual scale. This is the same
+> consideration as `huber_slope` in XGBoost's `reg:pseudohubererror`.
 
 The legacy `SnapBoost` class also accepts a `mode` parameter (`"classification"` or `"regression"`).
 
@@ -453,13 +544,14 @@ The legacy `SnapBoost` class also accepts a `mode` parameter (`"classification"`
 | `max_max_depth` | `int` | `4` | Maximum `max_depth` for trees in the pool |
 | `min_samples_leaf` | `int` | `10` | Minimum number of samples required in each decision-tree leaf |
 | `alpha` | `float` | `1.0` | L2 regularization for the RFF ridge regressor |
-| `gamma` | `float` | `1.0` | RBF kernel coefficient for random Fourier features |
+| `alpha_linear` | `float` or `None` | `None` | L2 penalty for the optional linear family; defaults to `alpha` |
+| `gamma` | `float` or `"scale"` | `1.0` | Kernel coefficient, or sklearn's variance-based `'scale'` |
 | `n_components` | `int` | `100` | Number of random Fourier features |
 | `scale_features` | `bool` | `True` | Standardize features before the RFF mapping |
 | `max_features` | `None`, `int`, `float`, or `str` | `None` | Features considered at each tree split |
 | `kernel_gammas` | sequence or `None` | `None` | Optional RFF bandwidth pool; `None` uses `gamma` |
 | `kernel_types` | sequence | `("rbf",)` | RFF kernel families: RBF and/or Laplacian |
-| `monotonic_cst` | sequence or `None` | `None` | Optional tree monotonic directions when supported by scikit-learn |
+| `monotonic_cst` | sequence or `None` | `None` | Optional tree monotonic directions when supported by scikit-learn; binary and regression only |
 
 The adaptive shared parameters are exposed by the recommended
 `SnapBoostClassifier` and `SnapBoostRegressor` classes. Legacy and exact-kernel
@@ -471,8 +563,14 @@ and optional validation loss, and `best_iteration_` identifies the round with
 the lowest validation loss. That ensemble is restored only when
 `early_stopping_rounds` triggers; with an `eval_set` alone `best_iteration_` is
 informational and predictions still use all `n_iter_` learners.
+`staged_predict` yields the ensemble after each round;
+`permutation_importance` is the feature-importance API for mixed tree and
+kernel learners.
 
-**Label conventions (classification)**: accepts any two distinct class labels. Predictions use the original labels, and probability columns follow `classes_` order.
+**Label conventions (classification)**: binary and multiclass labels are
+accepted. Predictions use the original labels, and probability columns follow
+`classes_` order. Binary models keep a scalar `decision_function`; multiclass
+models return one column per class.
 
 ---
 

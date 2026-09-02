@@ -73,10 +73,12 @@ def run(seed):
         models = {"snapboost_adaptive": snap, **_competitors(task, seed)}
         for name, model in models.items():
             start = time.perf_counter()
+            # All models train on the same rows. The hold-out split is only
+            # used as SnapBoost's early-stopping eval set.
             if name == "snapboost_adaptive":
                 model.fit(X_fit, y_fit, eval_set=(X_valid, y_valid))
             else:
-                model.fit(X_train, y_train)
+                model.fit(X_fit, y_fit)
             train_seconds = time.perf_counter() - start
             if task == "classification":
                 probability = model.predict_proba(X_test)[:, 1]
@@ -90,8 +92,8 @@ def run(seed):
                 prediction = model.predict(X_test)
                 metrics = {
                     "primary_metric": "rmse",
-                    "primary_value": mean_squared_error(
-                        y_test, prediction, squared=False
+                    "primary_value": float(
+                        np.sqrt(mean_squared_error(y_test, prediction))
                     ),
                     "secondary_metric": "",
                     "secondary_value": np.nan,

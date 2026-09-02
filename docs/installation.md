@@ -22,7 +22,7 @@ pip install .
 | NumPy | ≥ 1.20 |
 | scikit-learn | ≥ 1.0 |
 | tqdm | ≥ 4.50 |
-| [hnbm](https://pypi.org/project/hnbm/) | ≥ 1.0.0 |
+| [hnbm](https://pypi.org/project/hnbm/) | ≥ 1.2.0 |
 
 ## Docker
 

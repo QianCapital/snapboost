@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import inspect
 import warnings
 from collections.abc import Sequence
@@ -5,11 +7,11 @@ from numbers import Integral, Real
 
 import numpy as np
 from hnbm import HNBM, HNBMClassifier, HNBMRegressor
-from sklearn.kernel_ridge import KernelRidge
 from sklearn.tree import DecisionTreeRegressor
 
+from .kernel_learner import WeightedKernelRidgeRegressor
 from .linear_learner import WeightedLinearRegressor
-from .rff_learner import RandomFourierRidgeRegressor
+from .rff_learner import RandomFourierRidgeRegressor, is_allowed_gamma
 
 # ``1 - p_tree - p_linear`` can leave a rounding residue near 1e-17 even when the
 # two probabilities already sum to one. Anything below this counts as an empty
@@ -21,7 +23,7 @@ class _SnapBoostMixin:
     """Shared SnapBoost learner pool configuration."""
 
     _REBUILD_PARAMS = frozenset({
-        "p_tree", "p_linear", "alpha", "gamma", "n_components",
+        "p_tree", "p_linear", "alpha", "alpha_linear", "gamma", "n_components",
         "min_max_depth", "max_max_depth", "min_samples_leaf", "random_state",
         "max_features", "scale_features",
         "kernel_gammas", "kernel_types",
@@ -36,6 +38,7 @@ class _SnapBoostMixin:
         max_max_depth=4,
         min_samples_leaf=10,
         alpha=1.0,
+        alpha_linear=None,
         gamma=1.0,
         n_components=100,
         max_features=None,
@@ -50,6 +53,7 @@ class _SnapBoostMixin:
         self.max_max_depth = max_max_depth
         self.min_samples_leaf = min_samples_leaf
         self.alpha = alpha
+        self.alpha_linear = alpha_linear
         self.gamma = gamma
         self.n_components = n_components
         self.max_features = max_features
@@ -68,6 +72,9 @@ class _SnapBoostMixin:
             "min_samples_leaf", self.min_samples_leaf
         )
         alpha = overrides.get("alpha", self.alpha)
+        alpha_linear = overrides.get(
+            "alpha_linear", getattr(self, "alpha_linear", None)
+        )
         gamma = overrides.get("gamma", self.gamma)
         n_components = overrides.get(
             "n_components", getattr(self, "n_components", None)
@@ -120,14 +127,22 @@ class _SnapBoostMixin:
             or alpha <= 0
         ):
             raise ValueError(f"alpha must be a finite number > 0, got {alpha}.")
-        if (
-            isinstance(gamma, (bool, np.bool_))
-            or not isinstance(gamma, Real)
-            or not np.isfinite(gamma)
-            or gamma <= 0
+        if alpha_linear is not None and (
+            isinstance(alpha_linear, (bool, np.bool_))
+            or not isinstance(alpha_linear, Real)
+            or not np.isfinite(alpha_linear)
+            or alpha_linear <= 0
         ):
-            raise ValueError(f"gamma must be a finite number > 0, got {gamma}.")
-        if n_components is not None and (
+            raise ValueError(
+                f"alpha_linear must be a finite number > 0 or None, "
+                f"got {alpha_linear}."
+            )
+        if not is_allowed_gamma(gamma):
+            raise ValueError(
+                f"gamma must be a finite number > 0 or 'scale', got {gamma}."
+            )
+        requires_n_components = "n_components" in type(self)._REBUILD_PARAMS
+        if (requires_n_components or n_components is not None) and (
             isinstance(n_components, (bool, np.bool_))
             or not isinstance(n_components, Integral)
             or n_components < 1
@@ -178,17 +193,11 @@ class _SnapBoostMixin:
             isinstance(kernel_gammas, (str, bytes))
             or not isinstance(kernel_gammas, (Sequence, np.ndarray))
             or len(kernel_gammas) == 0
-            or any(
-                isinstance(value, (bool, np.bool_))
-                or not isinstance(value, Real)
-                or not np.isfinite(value)
-                or value <= 0
-                for value in kernel_gammas
-            )
+            or any(not is_allowed_gamma(value) for value in kernel_gammas)
         ):
             raise ValueError(
                 "kernel_gammas must be a nonempty sequence of positive numbers "
-                "or None."
+                "or 'scale', or None."
             )
         if (
             isinstance(kernel_types, (str, bytes))
@@ -203,10 +212,12 @@ class _SnapBoostMixin:
         if monotonic_cst is not None and (
             isinstance(monotonic_cst, (str, bytes))
             or not isinstance(monotonic_cst, (Sequence, np.ndarray))
+            or len(monotonic_cst) == 0
             or any(value not in (-1, 0, 1) for value in monotonic_cst)
         ):
             raise ValueError(
-                "monotonic_cst must contain only -1, 0, and 1, or be None."
+                "monotonic_cst must be a nonempty sequence of -1, 0, and 1, "
+                "or None."
             )
 
     def _learner_seeds(self, count):
@@ -228,8 +239,12 @@ class _SnapBoostMixin:
         )
 
     def _make_linear_learner(self):
+        if getattr(self, "alpha_linear", None) is None:
+            alpha = self.alpha
+        else:
+            alpha = self.alpha_linear
         return WeightedLinearRegressor(
-            alpha=self.alpha,
+            alpha=alpha,
             scale_features=self.scale_features,
         )
 
@@ -284,6 +299,28 @@ class _SnapBoostMixin:
             self.base_learners_.append(self._make_linear_learner())
             self.probabilities_.append(self.p_linear)
 
+    def _reject_multiclass_monotonic_cst(self, y):
+        """Reject monotone constraints on a softmax model.
+
+        Constraints bind each class score separately, and every score can rise
+        with a feature while no class probability does, so the guarantee the
+        caller is asking for cannot be delivered. scikit-learn refuses the same
+        combination.
+        """
+        if self.monotonic_cst is None or self.mode != "classification":
+            return
+        try:
+            n_classes = int(np.unique(np.asarray(y)).size)
+        except (TypeError, ValueError):
+            return
+        if n_classes > 2:
+            raise ValueError(
+                "monotonic_cst is not supported for multiclass classification, "
+                f"but y has {n_classes} classes. Monotone class scores do not "
+                "make any class probability monotone under softmax. Drop "
+                "monotonic_cst, or reduce the problem to two classes."
+            )
+
     def _validate_set_param_keys(self, params):
         valid_params = self.get_params(deep=True)
         invalid = [key for key in params if key not in valid_params]
@@ -309,8 +346,10 @@ class _SnapBoostMixin:
     def fit(
         self, X, y, sample_weight=None, eval_set=None,
         eval_metric=None, callbacks=None, candidate_n_jobs=1,
+        *, eval_sample_weight=None,
     ):
         self._validate_snapboost_params()
+        self._reject_multiclass_monotonic_cst(y)
         self._build_base_learners()
         if sample_weight is not None:
             weights = np.asarray(sample_weight, dtype=float)
@@ -326,6 +365,7 @@ class _SnapBoostMixin:
             eval_metric=eval_metric,
             callbacks=callbacks,
             candidate_n_jobs=candidate_n_jobs,
+            eval_sample_weight=eval_sample_weight,
         )
 
 
@@ -348,6 +388,7 @@ class SnapBoost(_SnapBoostMixin, HNBM):
         max_max_depth=4,
         min_samples_leaf=10,
         alpha=1.0,
+        alpha_linear=None,
         gamma=1.0,
         n_components=100,
         mode="classification",
@@ -361,6 +402,7 @@ class SnapBoost(_SnapBoostMixin, HNBM):
             max_max_depth=max_max_depth,
             min_samples_leaf=min_samples_leaf,
             alpha=alpha,
+            alpha_linear=alpha_linear,
             gamma=gamma,
             n_components=n_components,
         )
@@ -379,10 +421,12 @@ class SnapBoost(_SnapBoostMixin, HNBM):
 
 class SnapBoostClassifier(_SnapBoostMixin, HNBMClassifier):
     """
-    SnapBoost for binary classification.
+    SnapBoost for classification.
 
     A heterogeneous Newton boosting machine that uses decision trees and
-    random Fourier feature ridge regressors. Supports random or greedy learner
+    random Fourier feature ridge regressors. Binary targets use logistic
+    loss. Multiclass targets use softmax Newton boosting with one scalar
+    learner per class each round. Supports random or greedy learner
     selection, per-round line search, subsampling, observation weights,
     validation histories, and early stopping.
     """
@@ -397,6 +441,7 @@ class SnapBoostClassifier(_SnapBoostMixin, HNBMClassifier):
         max_max_depth=4,
         min_samples_leaf=10,
         alpha=1.0,
+        alpha_linear=None,
         gamma=1.0,
         n_components=100,
         max_features=None,
@@ -421,6 +466,7 @@ class SnapBoostClassifier(_SnapBoostMixin, HNBMClassifier):
             max_max_depth=max_max_depth,
             min_samples_leaf=min_samples_leaf,
             alpha=alpha,
+            alpha_linear=alpha_linear,
             gamma=gamma,
             n_components=n_components,
             max_features=max_features,
@@ -469,6 +515,7 @@ class SnapBoostRegressor(_SnapBoostMixin, HNBMRegressor):
         max_max_depth=4,
         min_samples_leaf=10,
         alpha=1.0,
+        alpha_linear=None,
         gamma=1.0,
         n_components=100,
         max_features=None,
@@ -493,6 +540,7 @@ class SnapBoostRegressor(_SnapBoostMixin, HNBMRegressor):
             max_max_depth=max_max_depth,
             min_samples_leaf=min_samples_leaf,
             alpha=alpha,
+            alpha_linear=alpha_linear,
             gamma=gamma,
             n_components=n_components,
             max_features=max_features,
@@ -550,7 +598,11 @@ class _KernelRidgePoolMixin(_SnapBoostMixin):
         del random_state
         if kernel != "rbf":
             raise ValueError("Exact kernel ridge supports only the RBF kernel.")
-        return KernelRidge(alpha=self.alpha, kernel="rbf", gamma=gamma)
+        return WeightedKernelRidgeRegressor(
+            alpha=self.alpha,
+            gamma=gamma,
+            scale_features=self.scale_features,
+        )
 
 
 class SnapBoost_KernelRidge(_KernelRidgePoolMixin, HNBM):
@@ -584,11 +636,12 @@ class SnapBoost_KernelRidge(_KernelRidgePoolMixin, HNBM):
 
 
 class SnapBoostKernelRidgeClassifier(_KernelRidgePoolMixin, HNBMClassifier):
-    """Binary SnapBoost classifier using exact RBF kernel ridge learners.
+    """SnapBoost classifier using exact RBF kernel ridge learners.
 
-    This specialized surface is frozen in 1.0: it does not expose the adaptive
-    training controls of :class:`SnapBoostClassifier`. Prefer the RFF-based
-    classifier unless an exact kernel is required.
+    Binary targets use logistic loss; multiclass targets use softmax Newton
+    boosting. This specialized surface is frozen in 1.0: it does not expose
+    the adaptive training controls of :class:`SnapBoostClassifier`. Prefer
+    the RFF-based classifier unless an exact kernel is required.
     """
 
     def __init__(

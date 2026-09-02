@@ -28,6 +28,23 @@ def _expected_failed_checks():
         SnapBoostRegressor(
             num_iterations=8, p_tree=1.0, random_state=0, verbose=False
         ),
+        SnapBoostClassifier(
+            num_iterations=8,
+            p_tree=0.0,
+            n_components=16,
+            random_state=0,
+            verbose=False,
+        ),
+        # Pure RFF regression needs more capacity than the tree path to
+        # clear sklearn's train-score threshold on the toy regression set.
+        SnapBoostRegressor(
+            num_iterations=20,
+            p_tree=0.0,
+            n_components=32,
+            learning_rate=0.3,
+            random_state=0,
+            verbose=False,
+        ),
     ],
 )
 def test_snapboost_passes_sklearn_check_estimator(estimator):
